@@ -1,0 +1,1484 @@
+Section 0 (General Info):
+All humans have base 4/4 Move/Jump.
+Monster Talk and Monster Skill restrictions no longer exist.
+Level = Constitution
+All equips have weight.
+Brave = Loyalty
+Faith = Corruption
+EXP = Accumulation Points (AP)
+All "Immortal" units cannot lose AP (and thus are immune to STeal AP).
+Ramza's initial squad starts with 50 loyalty and 50 Corruption.
+Base Hit (for physical and magical attacks) = 105%
+Critical Hit Chance (for physical attacks) = max (0, Hit after Evasion - 100%)
+NOTE: The critical hit chance for non-weapon magical attacks is zero.
+NOTE: The jargon "forced" (outside of forced 2H), "force-set", or "fixed" means there exists no way to modify or block whatever is to be inflicted.
+
+
+Section 1 (Loyalty/Corruption Modding):
+If a unit eats a non-monster crystal, he gets +5 loyalty.
+Let X = (Enemy Level - Attacker Level).
+If X > 5, attacker loses 2 corruption upon attack.
+If X is between 1 and 5 (inclusive), nothing happens.
+ELSE, attacker gains 2 corruption upon attack.
+NOTE: This only applies to enemies. Performing actions on allies has no effect on corruption.
+
+
+Section 2 (Move/Jump Modding):
+Let X = CON - Total Weight.
+If X < 0:
+1) If unit gets a turn, subtract 2 from loyalty.
+2) Add [(X + 5)/ 10] from jump
+3) Add [(X + 10)/ 15] from move
+4) Add min(0, [(X + 15) / 5]) from SPD
+NOTE: Since X is negative, we are actually subtracting the absolute value.
+NOTE: Remember that [-0.1] = -1
+
+
+Section 3 (Hit Modding):
+If unit has defend, physical D-EV (defense evasion, which functions like an extra layer of physical A-EV), is given by the following table:
+-----------
+|Jump|D-EV|
+-----------
+|  1 | 10 |
+|  2 | 19 |
+|  3 | 27 |
+|  4 | 34 |
+|  5 | 40 |
+|  6 | 46 |
+|  7 | 51 |
+|  8 | 55 |
+|  9 | 59 |
+| 10 | 63 |
+| 11 | 66 |
+| 12 | 69 |
+-----------
+Magical D-EV is half of physical D-EV, rounded down.
+
+Let X = Jump - 4
+If X > 0, add 20 * X to Base Hit.
+
+C-EV now has C/P-EV and C/M-EV. If unit is a monster, C-EV functions as A-EV.
+
+
+Section 4 (Elemental Modding):
+Elements are:
+Fire
+Water
+Earth
+Nature
+Wind
+Lightning
+Holy
+Darkness
+
+If the elemental of an absorb HP attack is absorbed, reverse the effect on caster and target.
+Halve only affects damage.
+If a unit is weak to the element of a healing/absorbed attack, such unit takes unboosted damage. This is true for HP and MP damage. Elemental boost multiplies overall damage by 5/4. If a spell flagged as elemental does not do damage, elemental boost affects only XA.
+Weak overrides null for all elements. By the above, it also nullifies the effect of absorb.
+Superweak overrides null, absorb, halve for all elements.
+
+
+Section 5 (Wait Modding):
+If a unit did not act, the unit will gain defend when they use "Wait" command.
+If dead unit's turn counter decreases, decrease loyalty and increase corruption by 5.
+Let X = CT after "Wait" was used, and assume the unit is not charging, performing, jumping, or poisoned. Unit will regain max{X / 10, maxMP * X / 1000} MP. Units start with maxMP.
+
+
+Section 6 (Victory Modding):
+Upon victory, player units without a KO status or an AI control status (charm) gain 150 JP in their job and automatically level up. All other means of gaining JP no longer exist. When a battle ends, reset all AP to 0.
+Upon victory, a non-guest ally with 0 loyalty or 100 corruption will leave. Next, if the battle is not a random battle, every ally without a negative status gains 10 loyalty. After this check, the permanent change to corruption and loyalty is calculated at a 4:1 ratio, as in vanilla.
+NOTE: It is still possible to win a battle and have healthy units leave because the check for 0 loyalty happens before the victory loyalty bonus.
+
+
+Section 7 (AP Gain):
+Every time a non-human makes a successful action (not missed or guarded), gain 2 AP. Humans gain 1 AP per successful action. When a unit dies, reset his AP to 0. Maximum AP per unit is 50.
+
+
+Section 8 (Status Modding):
+No relationship with vanilla is assumed in the following table.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|    Status    |Type|CT|KO|Trgtble|ActiveTurn|AIControl|Ctr|Share|DMGEnd|       Cancel       |         NoStack         |                                   Effect                                   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|    Crystal   | Neg|--| Y|   No  |No-CTFreez|   N/A   |N/A| N/A |  N/A |     Everything     |          Bless          |  Unit who eats this regain all HP/MP; dead units become this when timer=-1 |
+|     Dead     | Neg|3S| Y|   No  | No-CTOpen|   N/A   | No|  A  |  N/A |         (1)        |          Bless          |Unit who reaches 0 HP or when death sentence timer=-1 forcibly becomes this.| 
+|    Undead    | Neg|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |       Reraise      |      Bless/Vampire      |          Unit becomes weak to holy and fire, but absorbs dark; (2)         |
+|   Charging   | Pos|??| N|Unevade|    Yes   |    No   |Yes| N/A |  No  |   Dfnd/Perf/Invi   |  Curs/DA/Vamp/Frog/Slp  |    Unit readies an attack and will charge until the attack is released.    |
+|    Jumping   | Pos|??| N|   No  | No-CTOpen|   N/A   |N/A| N/A |  N/A | Dfnd/Chrg/Perf/Invi|   Curs/DA/DM/Vamp/Slp   |          Unit jumps into the air and stops jumping when he lands.          |
+|    Defend    | Pos|1S| N|AddD-EV|    Yes   |    No   |Yes| N/A |  No  |        None        |           (3)           |                       Unit gains access to his D-EV.                       |
+|    Perform   | Pos|??| N|P.XA3/2|    Yes   |    No   |Yes| N/A |  No  |   Dfnd/Chrg/Invi   | Curs/DA/DM/Vamp/Frog/Slp|                  Unit acts a role until ordered otherwise                  |
+|    Petrify   | Neg|--| Y|   No  |No-CTFreez|   N/A   | No| N/A |  N/A |         (4)        |          Bless          |                                    None                                    |
+|     Bless    | Pos|24| N|  Yes  |    Yes   |    No   |Yes|  B  |  No  |        None        |          Curse          |                                     (5)                                    |
+|     Blind    | Neg|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |        None        |          Bless          |                     Unit's physical accuracy is halved                     |
+|    Stupor    | Neg|32| N|  Yes  |    Yes   |    No   |Yes|  C  |  No  |   Defend/Berserk   |          Bless          |                                -15 Unit CON                                |
+|     Addle    | Neg|--| N|  Yes  |    Yes   |    No   |(*)| N/A |  No  |        None        |          Bless          |               Unit can only use equipment-based skillsets(*)               |
+|    vampire   | Neg|--| Y|Unevade|    Yes   |ATKNearst| No| N/A |  No  | Dfnd/Chrg/Perf/Brsk|       Bless/Undead      |              Unit becomes weak to water, but absorbs dark;(6)              |
+|     Curse    | Neg|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |        None        |          Bless          |                                     (7)                                    |
+|   Treasure   | Neg|--| Y|   No  |No-CTFreez|   N/A   |N/A| N/A |  N/A |     Everything     |          Bless          |                         No longer exists in game                           |
+|      Oil     | Neg|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  (8) |        None        |          Bless          |        Unit becomes superweak to all elements except holy and dark.        |
+|     Float    | Pos|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |        None        |        Curse/Frog       |                                     (9)                                    |
+|    Reraise   | Pos|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |   Death Sentence   |       Curse/Undead      |       One turn after death, cancel:dead and regain (10% * maxHP) HP.       |
+|   Invisible  | Pos|1E| N|  Yes  |    Yes   |    No   |Yes|  D  |  Yes |        None        |     Curse/Performing    |              All applicable attacks have 100% critical chance              |
+|    Berserk   | Pos|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |        Blink       |    Curs/Stup/Vamp/Slp   |                                     (A)                                    |
+|     Blink    | Pos|--| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |        None        |     Curs/Brsk/DM/DA     |                     Unit gains the ability to teleport                     |
+|     Frog     | Neg|--| N|P.XA3/2|    Yes   |    No   | No| N/A |  No  | Dfnd/Chrg/Perf/Flot|          Bless          |                                     (B)                                    | 
+|   Critical   | Neg|??| N|  Yes  |    Yes   |    No   |Yes| N/A |  No  |        None        |           None          |    If curHP<maxHP*20%, units become this; ELSE, units are cured of this    |
+|    Poison    | Neg|--| N|  Yes  |    Yes   |    No   |Yes|  E  |  No  |        Regen       |          Bless          |Unit loses min{125,maxHPorMP/8} HP/MP per turn and cannot use Move-HP Up.(C)|
+|     Regen    | Pos|36| N|  Yes  |    Yes   |    No   |Yes|  F  |  No  |       Poison       |          Curse          |                     Unit gains [maxHP/8] HP per turn(D)                    |
+|    Protect   | Pos|32| N|P.XA2/3|    Yes   |    No   |Yes|  G  |  No  |        None        |          Curse          |                                    None                                    |
+|     Shell    | Pos|32| N|M.XA2/3|    Yes   |    No   |Yes|  H  |  No  |        None        |          Curse          |                                    None                                    |
+|     Haste    | Pos|32| N|  Yes  |    Yes   |    No   |Yes|  I  |  No  |        Slow        |          Curse          |                       For CT calculations, Unit SP+3                       |
+|     Slow     | Neg|32| N|  Yes  |    Yes   |    No   |Yes|  I  |  No  |        Haste       |          Bless          |                      For CT calculations, Unit SP*2/3                      |
+|     Stop     | Neg|20| N|   No  |No-CTFreez|   N/A   | No|  J  |  N/A |        None        |          Bless          |                                    None                                    |
+|     Wall     | Pos|24| N|   No  |    Yes   |    No   |Yes|  K  |  No  |        None        |          Curse          |                                    None                                    |
+|    Defile    | Neg|32| N|  Yes  |    Yes   |    No   |Yes|  L  |  No  |      Innocent      |          Bless          |                   For damage calculations, Unit Corr=100                   |
+|   Innocent   | Pos|32| N|  Yes  |    Yes   |    No   |Yes|  L  |  No  |       Defile       |          Curse          |                    For damage calculations, Unit Corr=0                    |
+|     Charm    | Neg|32| N|  Yes  |    Yes   |ATKAllies|Yes|  M  |  Yes |   Dfnd/Chrg/Perf   |          Bless          |          Unit treats only the party of his charmer as his allies.          |
+|     Sleep    | Neg|60| N|  (E)  |No-CTFreez|   N/A   | No|  N  |  Yes | Dfnd/Chrg/Perf/Brsk|          Bless          |      Unit gains 1+[maxMP*2%] MP per CT. Unit awakens when MP is full.      |
+|  Don't Move  | Neg|24| N|Unevade|    Yes   |    No   |Yes|  O  |  No  |   Dfnd/Perf/Blnk   |          Bless          |     Unit cannot move, but upon AT end, the CT move penalty is assumed.     |
+|   Don't Act  | Neg|24| N|  Yes  |    Yes   |    No   | No|  P  |  No  | Dfnd/Chrg/Perf/Blnk|          Bless          |Unit cannot act or react(**), but upon AT end, the CT act penalty is assumed|
+|    Reflect   | Pos|32| N|  Yes  |    Yes   |    No   |Yes|  Q  |  No  |        None        |          Curse          |                                     (F)                                    |
+|Death Sentence| Neg|3S| N|  Yes  |    Yes   |    No   |Yes|  R  |  No  |       Reraise      |       Bless/Undead      |  When death sentence timer=-1, forcibly kill unit; Unit gains Immune:Holy  |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) Cancel:All except Crystal,Dead,Undead,Treasure,Petrify,Reraise,Curse,Poison
+(2) If a unit is dead + undead and counter = -1, 50% chance to Cancel:dead and regain RN{1...maxHP} HP.
+(3) NoStack:Curse,Charging,Perform,Don't Move,Don't Act,Stupor,Vampire,Frog,Sleep
+(4) Cancel:Charging,Defend,Perform,Float,Invisible,Berserk,Sleep,Reflect,Death Sentence
+(5) No other positive status except charging, jumping, and performing can be removed or drop in CT count (even if another status is added) unless bless is also removed.
+(*) Equipmment based skillsets include ATTACK (and by consequence, ATTACK+ and ATTACK*), ITEM (not ALCHEMY), DRAW OUT (not LORE). Consequently, Auto Potion (without a bag), Counter Magic, Counter Flood, Counter Drain, and the effects of Pantomime are disabled.
+(6) A Vampire can only use the Blood Suck Skillset, which has:
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| Blood Suck|          (a)          | 0| 0|   1v0   |   Dark  |       Add:Blood Suck       |PEV| No| No| No|  None |         None        |Phys%DMG|  0 |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+(a) Drain min{250, tarmaxHP * 25%} from HP and min{250, tarmaxMP * 25%} from MP.
+(7) No other negative status except dead, critical, death sentence, sleep, and stop can be removed or drop in CT count (even by the addition of new statii) unless curse is also removed.
+(8) If unit is hit by damage in an element he is weak to, remove status.
+(9) Force-set the accuracy of all earth elemental attacks taken by unit to 0%; unit gains the ability to fly, and glides 1m above all terrain types.
+(A) Berserk units can use only countergrasp skills, and cannot use Counter Drain, Counter Magic, Damage Split, Teleport, and Counter Flood. Berserk units gain +1 Move. If a berserk unit KOs another unit, gain 1 extra AP. Berserk units also gain the use of the ATTACK+ commmand under ATTACK. 
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |AP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|  ATTACK+  |          (a)          |??| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    |   WEapon  | No|  None |         None        | PhysDMG|  0 |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+(a) If AP < 5, WeaponDMG; else, consume all AP to deal WeaponDMG * (1 + AP / 10).
+(B) Unit is now treated in damage formulas as a monster with no equips, 1 PA/MA, and 48 CP-EV and CM-EV. Even while frogged, the unit may use the ATTACK skilset (which includes ATTACK, ATTACK+, ATTACK*) or use JUMP if set as a primary or secondary, but all damage from him is force-set to 1.  
+(C) Poison+ converts the old CT timer into a turn timer with value X. Poison+ subtracts min{999 * X / 16, maxHPorMP * X / 16} HP/MP. NOTE: This implies that Poison+, when inflicted, sets the timer to 1 and damage is calculated before the timer is updated.
+(D) If the upper bit of the CT timer is flagged, Regen becomes Regen+, which shares the same timer. Regen+ heals [maxHP/ 4] HP and absorbs holy. NOTE: This implies that the lower 7 bits are used to determine the timer's value, and that 0x00 = 0x80 = 0 on the CT timer.
+(**) Does not include item-derived reactions.
+(E) Physical XA is 3/2x and cannot evade.
+(F) Let (A,B) be natural numbers designating the unit with reflect's location on the map and (X,Y) be integers specifying the distance from source of attack to said unit. Unit cannot be hit by reflectable attack (except by proc) because the attack is redirected to hit (A+X,B+Y), as long as such a location exists on the map.
+
+If a negative status cancels another status or if said status cannot stack on a negative status, the effect of the other status is temporarily overriden by the infliction of the appropriate negative status. However, unless the positive status is bless or berserk, no similar effect occurs when a positive status cancels another status or if another status cannot stack on a positive status.
+Equipment or Supports that nullify status can only block status infliction DURING BATTLE. Status effects inflicted by equipment at the beginning of battle cannot be nullified, nor can it nullify auto-status that is inflicted by changing equipment during battle. NOTE: Only auto-status can be inflicted, and removing gear that adds an initial status that has not yet dissipated will not remove that initial status.
+
+
+Section 9 (Teleport Modding):
+You can teleport to any distance within MOVE + AP squares of self. Let X be the distance from your current square to your new square. If X - MOVE > 0, spend (X - MOVE) AP. Whenever teleport is concluded, there exists a 25% chance to remove the blink status.
+
+
+Section 10 (Monster Modding):
+Beast types include:
+Chocobo (Mount)
+Ahriman
+Zombie
+Wolf (Mount)
+Bomb
+Tortoise (Mount)
+Bug (Mount)
+Hawk
+Dragon (Mount)
+Behemoth (Mount)
+Tiamat (Mount)
+Dryad
+Murbol (Mount)
+Lamia
+Cactuar
+Gryphon (Mount)
+
+Humanoid types include:
+Demons (Archaeo/Apanda/Ultima + Byblos)
+Goblin 
+Tonberry 
+Fairy 
+Squid 
+Minotaur
+Skeleton
+Succubus/Incubus (i.e. Dracula-type vampire)
+Ghoul
+
+All Monsters auto-learn their skillset, but: 
+Beast types have only 4 moves, have MON sprites, cannot equip anything, and have fixed R/S/S. Beast types cannot consume MP.
+Humanoid types have up to 16 moves, have humanoid sprites, can equip weapons and items, and have varied R/S/S. Humanoid types consume MP on spells.
+
+The rider's mobility is solely determined by the mount. More precisely, while riding, the rider gains CT according to the effective speed of his mount. Once the rider gains a turn, the mount's MOV, JMP, and movement style (i.e. fly, teleport, ignore height, swim) are used to determine movement. Both of these ignore all status, equipment, weight modifiers on the rider. However, the ability to deal damage as well as the damage dealt is still determined by the rider. Monster stats are only used during combat when Survivalism allows the rider to use the mount's skillset.
+NOTE: The process of mounting suspends any targetable negative status on the mount that passively KOs (i.e. poison, death sentence), impairs mobility (i.e. slow, stupor, don't move) or prevents action (i.e. don't act, sleep) until the rider dismounts. Berserk and frogged monsters cannot be mounted and all monsters are immune to vampire. Since this counts only as suspension, curse cannot prevent this. While mounted, the timer on all of the mount's statii remain fixed.
+NOTE: While mounted, the mount cannot take damage, meaning that the rider can ride the mount to disrupt charged attacks that would otherwise affect the mount. Any reaction to a mount's attack hits the rider.
+NOTE: While mounted, the rider/mount pair are immune to knockback and frog.
+NOTE: A unit may mount a beast at the cost of a turn. After the rider's turn ends, his CT is force-set to that of the beast he mounted while the mount's CT is force-set to 0. Although the rider gains CT according to the effective speed of the mount, his end of turn CT modification is determined solely by his choice in actions, movements (of the mount), and other factors on the rider (Vitality UP, Don't Act, etc.)
+
+
+Section 11 (Weather Modding):
+Any inclement weather (snowstorm, thunderstorm, night) multiplies base hit for all physical attacks by 3/4x. This effect does not self-stack.
+Night multiplies damage or healing by 5/4x if dark and by 3/4x if holy
+Sunshine (Daytime + No Rain or Snow of any kind) multiplies damage or healing by 5/4x if fire and by 3/4x if dark
+Light Rain and Light Snow multiplies damage or healing by 5/4x if wind and by 3/4x if holy
+Snowstorm multiplies damage or healing by 5/4x if water and by 3/4x if fire. Snowstorms change snow and ice tiles to require 2 movement points to cross.
+Thunderstorm multiplies damage or healing by 5/4x if lightning and by 3/4x if fire. Thunderstorms change marsh, poison marsh, and swamp tiles to require 2 movement points to cross.
+
+
+Section 12 (Damage Order Modding):
+1) Determine Healing, Status, or Damage
+2) Determine Hit Chance
+3) Apply XA changes (elemental boost goes here if Status)
+4) XA +/* factor
+5) Apply overall modifiers (zodiac, elemental boost if not status, overwhelm if not status, elemental weak / halve if not status, etc.)
+6) Nullification (float if not status, evasion/miss, elemental null without weak if not status, status cancelation, upkeep, etc.)
+7) Set Status/Proc (includes null-dependent conditionals)
+8) Spiritguard / Guardian
+9) Apply everything to target (and recoil / reverse drain to self) 
+10) Two Swords
+11) AoE
+12) Multi-Hit
+13) Equip-dependent reactions
+14) SEt Reactions
+15) Mime
+
+
+Section 13 (R/S/M Modding):
+No relationship with vanilla is assumed in the following table. A unit can now equip 1 reaction and 2 supports.
+NOTE: If AP is less than the cost, you cannot use this ability.
+NOTE: Damage means negative changes to HP and MP from the result of an action.
+NOTE: Reducing stats means negative changes to numerical stats other than HP/MP (except Corruption, in which this is reversed).
+NOTE: Healing means any positive changes to numerical stats (except Corruption, in which this is reversed).
+NOTE: Range +X means that for all skills on a player with range > 1, increase the maximum range on such a skill by X.
+NOTE: AoE +X means that for all skills on a player with AoE > 0, increase the maximum range on such a skill by X.
+NOTE: Attacker always means the person who is attacking the user of the R/S/S.
+NOTE: Target always means the person who is being attacked by the user of the R/S/S.
+NOTE: Any reference to stats is that of the user of the reaction unless otherwise noted.
+
+Innates:
+Weapon Guard [weapons now can have P/W-EV and M/W-EV].
+
+---------------------------------------------------------------------------------------------------------------------------
+|     Name     | Type |AP1|  Formula1  | Triggertype | 2ndTrigger |AP2|     Formula2    | % |     Extra     |  Targeting  |
+---------------------------------------------------------------------------------------------------------------------------
+|    PA Save   | React| 2 |    +1 PA   |  Enemy DMG  |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+|    MA Save   | React| 2 |    +1 MA   |  Enemy DMG  |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+|    SP Save   | React| 3 |    +1 SP   |  Enemy DMG  |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+| Sunken State | React| 0 |Add:Invisble|   All DMG   |     N/A    |N/A|       N/A       |100|      N/A      |     Self    |
+|    Caution   | React| 0 | Add:Defend |   All DMG   |     N/A    |N/A|       N/A       |100|      N/A      |     Self    |
+| Dragon Spirit| React| 2 |  Add:Haste |  Enemy DMG  | CriticalHP | 2 |Add:Haste/Reraise|Loy|      N/A      |     Self    |
+|  Regenerator | React| 0 |  Add:Regen |  Enemy DMG  |     (1)    | 2 |    Add:Regen+   |Loy|      N/A      |     Self    |
+|  Harden Mind | React| 0 | +5 Loy/Corr|  Enemy DMG  |     N/A    |N/A|       N/A       | 50|      N/A      |     Self    |
+|   Open Mind  | React| 0 | -5 Loy/Corr|  Enemy DMG  |     N/A    |N/A|       N/A       | 50|      N/A      |     Self    |
+|  HP Restore  | React|???|     (2)    |  Enemy DMG  |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+|  Blood Seal  | React| 0 |     (3)    |   All DMG   |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+|  Adrenaline  | React| 1 |   +25 CT   |  Enemy DMG  | CriticalHP | 3 |     +127 CT     |Loy|      N/A      |     Self    |
+|Meatbone Slash| REact|???|     (4)    |   All DMG   |     N/A    |N/A|       N/A       |Loy|ATKR in WPN-Rng|     ATKR    |  
+| Counter Magic| REact| 0 |     (5)    |     (6)     |     N/A    |N/A|       N/A       |Loy|Pay MP of Spell|ATKR=SpelCent|  
+| Counter Drain| REact| 0 |     (7)    |   All DMG   |     N/A    |N/A|       N/A       |Loy|      (8)      |     ATKR    |  
+| Counter Flood| REact| 2 |TileGeomancy| CGrsp+CMagic|     N/A    |N/A|       N/A       |Loy|      N/A      |ATKR=SpelCent|
+|Absorb Used MP| React| 0 |     (9)    | Has MP Cost |     N/A    |N/A|       N/A       |100|      N/A      |     Self    |
+| Saving Grace | React| 5 |Cancl:Attack|  Fatal DMG  |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+|    Reflect   | React|---------------------------------------------------------------------------------------------------|
+|  Auto Potion | React| 0 |     (A)    |All HP/MP DMG|Bag not full| 0 |       (B)       |Loy|      (C)      |     Self    |
+|    Counter   | React|???|     (D)    | Countergrasp|     N/A    |N/A|       N/A       |Loy|ATKR in WPN-Rng|     ATKR    |
+|              | React|---------------------------------------------------------------------------------------------------|
+|  Distribute  | React| 0 |     (E)    | Excess HP/MP|     N/A    |N/A|       N/A       |100|      N/A      |  All Allies |
+|  MP Switch   | React|(F)|HPDMG->MPDMG|   All DMG   |     N/A    |N/A|       N/A       |Loy|      N/A      |     Self    |
+| Damage Split | React| 4 |     (G)    |   All DMG   |     N/A    |N/A|       N/A       |Loy|      N/A      |     (G)     |
+|  Contaminate | React| 2 |     (H)    | Countergrasp|No NegStatus| 3 |Add:DeathSentence|Loy|      N/A      |     ATKR    |
+| Finger Guard | React| 0 |     (I)    | Can Proc(*) |     N/A    |N/A|       N/A       |N/A|      N/A      |     ATKR    |
+|    Abandon   | React| 0 |     (J)    |     N/A     |     N/A    |N/A|       N/A       |N/A|      N/A      |     Self    |
+|    Osmosis   | React| 3 |     (K)    | Enemy Cgrasp|No PosStatus| 3 |Add:Protect/Shell|Loy|      N/A      |     Self    |
+|  Blade Grasp | React| 0 |     (I)    | Countergrasp|     N/A    |N/A|       N/A       |N/A|   Range < 3   |     ATKR    |
+| Ranged Guard | React| 0 |     (I)    | Countergrasp|     N/A    |N/A|       N/A       |N/A|   Range = 3+  |     ATKR    |
+|    Hamedo    | React| 5 |     (L)    |Weapon Strike|     N/A    |N/A|       N/A       |N/A|ATKR in WPN-Rng|     ATKR    |
+|  Equip Armor |Supprt|  Adds Helm,Armor,Shoes as equippable types and halves the weight of the three types |     Self    |
+|Equip Litegear|Supprt|  Adds Shield,Hat,Shirt as equippable types and halves the weight of the three types |     Self    |
+|  Equip Blade |Supprt|Adds Sword,KSword,Katana as equippable types and halves the weight of the three types|     Self    |
+|Equip Magegear|Supprt|  Adds Robe,Mantle,Ring as equippable types and halves the weight of the three types |     Self    |
+| Equip Ranged |Supprt|  Adds Gun,XBow,Longbow as equippable types and halves the weight of the three types |     Self    |
+| Equip Polearm|Supprt|   Adds Axe,Spear,Pole as equippable types and halves the weight of the three types  |     Self    |
+|Equip Magetool|Supprt|  Adds Rod,Staff,Flail as equippable types and halves the weight of the three types  |     Self    |
+|EQ Supportgear|Supprt|  Adds Bag,Book,Armlet as equippable types and halves the weight of the three types  |     Self    |
+|  Half of MP  |Supprt|                                    Halves MP Cost                                   |     Self    |
+|   Overwhelm  |Supprt|                 Overall DMG * 4/3; healing and %HP attacks excepted                 |Take and Deal|
+| Gained AP-UP |Supprt|                        Gain 1 extra AP from successful action                       |     Deal    |
+|   Attack UP  |Supprt|                             XA * 4/3 for physical attacks                           |     Deal    |
+|  Defense UP  |Supprt|                             XA * 2/3 for physical attacks                           |     Take    |
+| Magic ATK UP |Supprt|                             XA * 4/3 for magical attacks                            |     Deal    |
+| Magic DEF UP |Supprt|                             XA * 2/3 for magical attacks                            |     Take    |
+|  Concentrate |Supprt|                                 Attacks bypass P-EV                                 |     Deal    |
+|  Unyielding  |Supprt|                         Overall DMG * 2/3; healing excepted                         |Take and Deal|
+|  Secret Hunt |Supprt|        Base Hit is increased by (15 + [LVL / 2])%; if KO, -1 to death counter       |     Deal    |
+| Martial ARts |Supprt|         If CON - WT > 0, XA * 3/2 for physical attacks without WP in formula        |     Deal    |
+|  Blood Magic |Supprt|           Y=MPcost and X=curMP. If Y-X>0, spell cost is (Y-X)*2 HP and X MP         |     Self    |
+|   Slingshot  |Supprt|                         Thrown items have a base range of 4                         |     Self    |
+|   Turbo MP   |Supprt|               If MPcost > 0 and attack is magical, XA and MPcost * 3/2              |     Deal    |
+|   Two Hands  |Supprt|    Use both hands to hold suitable weapon, WP * 3/2 in WP-dependent formula; (M)    |     Deal    |
+|  Two Swords  |Supprt|                        Each hand can equip a suitable weapon                        |     Self    |
+|    Disarm    |Supprt|                               Target cannot react(**)                               |     Deal    |
+|  Monkeygrip  |Supprt|              2H weapons can be used as 1H weapons at 2/3 normal weight              |     Self    |
+|    Upkeep    |Supprt|User's stats / equipment can only be reduced / broken by non-recoil self-inflict; (N)|     Take    |
+|              |Supprt|---------------------------------------------------------------------------------------------------|
+| Short Charge |Supprt|        Causes any charged attack (not perform) to have half the CT cost(***)        |     Self    |
+|  Non-Charge  |Supprt|        Causes any charged attack (not perform) to resolve instantly, but (O)        |     Deal    |
+|              |Supprt|---------------------------------------------------------------------------------------------------|
+|              |Supprt|---------------------------------------------------------------------------------------------------|
+|              |Supprt|---------------------------------------------------------------------------------------------------|
+| Health Boost |Supprt|                                  Starting HP * 4/3                                  |     Self    |
+| Bounty Hunter|Supprt| +1 PA/SPD; eat non-monster crystal, +5 AP to user and +UsrSPD*(LVL+50) gil to squad |     Self    |
+|   Fleetfoot  |Supprt|                                     +1 Move/Jump                                    |     Self    |
+|  Survivalism |Supprt|                                     +1 PA/MA,(P)                                    |     Self    |
+|   Scouting   |Supprt|                +2 Jump, can find hidden items without incurring traps               |     Self    |
+|    Seeker    |Supprt|  +1 MA/SPD, ignore effects of weather and elemental weakness on accuracy and damage |Take and Deal|
+|   Authority  |Supprt|Ignore effects of ElemAbsorb except dark/Immune:critical/knockback/weapon procs(****)|  Deal/Take  |
+|  Move-HP UP  |Supprt|            If user moved at least one square, FixedHeal = 1/8 * maxuserHP           |     Self    |
+|  Move-MP UP  |Supprt|    If user moved at least one square, FixedMPHeal = 1/8 * maxuserMP; Null:Poison    |     Self    |
+|  Move Get-AP |Supprt|                  If user moved at least one square, gain 1 extra AP                 |     Self    |
+|   Immunity   |Supprt|              If user has 1+ negative status, no more can be added(****)             |     Take    |
+|   Giantism   |Supprt|                  User cannot enter water, but HP/MP can exceed 999                  |     Self    |
+|  Death Aura  |Supprt|   As long as user is alive, Dead cannot be removed from any unit in MOVEment range  |     Area    |
+| Healing Boost|Supprt|                   Overall HEAL * 4/3; activates twice on self-heal                  |Take and Deal|
+|  Mana Boost  |Supprt|          Starting MP * 4/3; double the MP healed after "Wait" or from Sleep         |     Self    |
+|   Limitless  |Supprt|              Ignore: target defensive multipliers and user recoil; (Q)              |     Deal    |
+|   Vigilance  |Supprt|                       Ignore: ATKR offensive multipliers; (Q)                       |     Take    |
+|   Pantomime  |Supprt|       User will mimic suitable ally moves, (R)/if KO target, gain 10 extra AP       |  Self/Deal  |
+|  Vitality UP |Supprt|             On end of turn, if MOVE AND ACT, set CT = 20. ELSE, CT = 40             |     Self    |
+|     Swim     |Supprt|User can move and act in water of any depth, and can move 2 squares per move in water|     Self    |
+|   Veterancy  |Supprt|                  If curHP / maxHP > 50%, DMG * 5/4|ELSE, DMG * 3/4                  |  Deal|Take  |
+|      Fly     |Supprt|                                     Innate:Float                                    |     Self    |
+|  Silent Walk |Supprt|                                    +1 Jump/Range                                    |     Self    |
+|   Dynamism   |Supprt|                  If curHP / maxHP > 50%, DMG * 3/4|ELSE, DMG * 5/4                  |  Take|Deal  |
+|              |Supprt|                                                                                     |     Self    |
+|              |Supprt|                                                                                     |     Self    |
+---------------------------------------------------------------------------------------------------------------------------
+
+(1) If unit already has non-innate regen
+(2) As long as curAP > 0, let X = min{5,curAP} = AP Cost. FixedHEAL = [X * maxHP / 5]
+(3) FixedMPHEAL = Received HP Damage
+(4) As long as curAP > 0, let X = min{4,curAP} = AP Cost. Unevadable, NON-ELMENTAL, physical damage = [X * (maxHP - curHP) / 4]. Cannot pull a critical or Knockback, only takes overall damage boosting multipliers, but takes all hindering multipliers except Zodiac compats.
+(5) Cast received spell against attacker
+(6) Enemy Mag. DMG from a spell in a generic human job
+(7) Cast life drain on target
+(8) ATKR in SPL-Rng; Pay MP of Spell
+(9) FixedMPHEAL = Received Spell's MP Cost
+(A) If only MP was damaged, use a virtual ether; else, if HP was damaged, use a virtual potion.
+(B) If only MP was damaged, consume 1 (real) ether; else, if HP was damaged, consume 1 (real) potion.
+(C) Virtual items heal as if LVL = 0, but ignore all bag, bag capacity, and item existance requirements.
+(D) As long as curAP > 0, let X = min{4,curAP} = AP Cost. Damage = [X * WeaponDMG / 4]
+(E) FIXEDHEAL = RU{Excess HP/MP / X}, where X is the number of non-self party members with less than full HP and don't have a status that inhibits targeting.
+(F) IF MP = 0 after MP Switch, Cost = 5, ELSE, Cost = 0.
+(G) FixedHEAL to Self = Received DMG / 2 = FIXEDMG to ATKR
+(H) Randomly transfer one negative status with its CT timer from user
+(I) Multiply the accuracy of incoming attack by by (100 - User Loyalty)%
+(*) Can Proc means that the received attack is capable of a spell or negative status proc. This check is done before the RNG roll that determines whether the proc occurs.
+(J) For the calculation of D-EV, User Jump +4.
+(K) Transfer all positive status from attacker and refresh CT timers
+(L) Preemptive attack; DMG = Weapon
+(M) JUMP and THROW excepted
+(**) Since item-based triggered effects (other than S/N-Recoil) always take the place of counters, they are also deactivated.
+(N) Can change equips in battle, and changing into a bag will reset capacity to full. NOTE: If an attack has stat reduction or equip break as a conditional, the entire attack is negated when the condition activates.
+(***) This includes JUMP and CHARGE.
+(O) the effectiveness is halved. Specifically, this means that if the attack affects numerical stats, the effect is halved; ELSE, the accuracy is set to min{50, Base Acc / 2}.
+(P) Rider can use mount skills as a third skillset, and Move = 1 over the surface of all terrain in all weather, regardless of elevation differences
+(****) Attacks proceed as if the chance for inflicting the disallowed condition is zero.
+(Q) EXCEPTION: Zodiac Compat, Weather.
+NOTE: Elemental Absorb is not a multiplier on the target that reduces damage because it converts damage to non-damage, and Status Effects on the target that prevent targeting outside of cancellation are also not multipliers.
+NOTE: Elmental Weak is a multiplier on the defender, and Two Swords is not a multiplier.
+(R) MP and recoil costs must be paid if target(s) were hit.
+NOTE: Mimicked attacks take the mime's overall condition, meaning mimicked ELEMENTAL corresponds to the mime's terrain, mimicked throws of potions and weapons are virtual, etc. 
+
+
+Section 14 (Equipment Modding):
+
+==========Weapon Formulas=====================
+Fists = PA * Base PA (the PA Score given by the combination of a unit's PAM, gender, and PAC)
+Knife = PA * WP
+Katana = PA * WP
+Sword = PA * WP
+Knight Sword = PA * WP
+Scroll = Formula(WP = Y; Stat/Attributes = X; Proc = Spell Proc; Range = Spell Range; Evade = AoE; Misc = Vert)
+Axe = rand{PA/2, PA * 3/2} * WP
+Rod = MA * WP
+Staff = MA * WP
+Flail = rand{PA/2, PA * 3/2} * WP
+Gun = WP * WP
+Crossbow = (3 + RU{LVL / 4}) * WP
+Longbow = PA * WP
+Instrument = MA * WP
+Book = MA * WP
+Lance = PA * WP
+Pole = MA * WP
+Bag = PA * (WP + RU{Base WT / 10} )
+Bag Capacity = Base WT, Bag Capacity is at maximum at start and after a reload, but like MP, it decreases after using anything held in the bag or any skill from the alchemy skillset.
+All Thrown items stored in a bag use 1 Capacity when thrown except Javelin, Throwing Axe, and Phoenix Down, which have a capacity of 2. Base WT means WT of the item, ignoring the effects of Equip Supportgear.
+THROWn Item = [SP * 4/5] * WP
+Grenades = LVL * 2, take elemental but no other multipliers (including Zodiacs and weather) on attackers or defenders. Items (including glass beaker) take PEV, grenades do not.
+Healing Items only take elemental null and weak but no other multipliers.
+JUMP = JMP * 2 * WP
+WP above is replaced by Base PA if no weapon is equipped.
+Scrolls have 100% proc rate. Others have 25% proc rate.
+
+--------------------------------------------------------------------------------------------------------------------------------
+|   Weapon   | Type |PEV|MEV|Wt|Range|WP| Element |         Proc        |  2H/2S  |Throw| Other |  Stat  |        Status       |
+--------------------------------------------------------------------------------------------------------------------------------
+|    Kunai   | Knife| 4 | 0 | 3|1/Str| 3|   None  |          No         |  No/Yes | Yes |  None |  None  |         None        |
+|   Ritual   | Knife| 4 | 8 | 6|1/Str| 4|   None  |          No         |  No/Yes |  No |  None | +1 MA  |         None        |
+|    Rusty   | Knife| 4 | 0 | 8|1/Str| 5|   None  |Stat/Poison AND Blind|  No/Yes |  No |  None |  None  |         None        |
+|    Stun    | Knife| 4 | 8 |14|1/Str| 6|Lightning|    Stat/Don't Act   |  No/Yes |  No |  None |  None  |         None        |
+|    Blood   | Knife| 0 | 0 |20|1/Str| 7|   Dark  |          No         |  No/Yes |  No | Drain |  None  |         None        |
+|   Killer   | Knife| 4 | 0 |17|1/Str| 9|   None  | Stat/Death Sentence |  No/Yes |  No |  None |  None  |         None        |
+|     Air    | Knife| 4 | 8 |22|1/Str|10|   Wind  |      Stat/Addle     |  No/Yes |  No |  None |  None  |         None        |
+|   Zorlin   | Knife| 12| 0 |24|1/Str|11|   None  |      Stat/Sleep     |  No/Yes |  No |  None |  None  |         None        |
+| Tonberrian | Knife| 12| 12|29|1/Str|12|   Dark  |      Stat/Curse     |  No/Yes |  No |  None |  None  |         None        |
+|    Main    | Knife| 40| 0 |30|1/Str|13|   None  |          No         |  No/Yes |  No |  None |  None  |         None        |
+|  Wikazashi |Katana| 8 | 0 |10|1/Str| 6|   None  |          No         |  No/Yes |  No |  None |  None  |         None        |
+|   Ninjato  |Katana| 12| 0 |13|1/Str| 7|   None  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|    Asura   |Katana| 16| 12|20|1/Str| 9|   Fire  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|  Murasame  |Katana| 16| 12|22|1/Str|10|  Water  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|  Kiyomori  |Katana| 16| 0 |25|1/Str|11|   None  |    Stat/Don't Act   |  No/Yes |  No |  None |  None  |         None        |
+|   Osafune  |Katana| 16| 0 |28|1/Str|12|   None  |  Spell/Magic Break  |  No/Yes |  No |  None |  None  |         None        |
+|  Muramasa  |Katana| 0 | 0 |32|1/Str|15|   Dark  |   Spell/Lifeleech   |  No/Yes |  No |  None |  None  |         None        |
+|  Masamune  |Katana| 16| 16|33|1/Str|13|   Holy  |     Spell/Comet     |  No/Yes |  No |  None |  None  |         None        |
+|    Short   | Sword| 0 | 0 | 4|1/Str| 4|   None  |          No         |  No/Yes |  No |  None |  None  |         None        |
+|   Bronze   | Sword| 12| 0 | 8|1/Str| 5|   None  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|    Iron    | Sword| 8 | 0 |10|1/Str| 6|   None  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|   Mythril  | Sword| 4 | 0 |11|1/Str| 7|   None  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|    Blood   | Sword| 0 | 0 |26|1/Str| 8|   Dark  |          No         | Yes/Yes |  No | Drain |  None  |         None        |
+|    Coral   | Sword| 4 | 12|19|1/Str| 8|  Nature |   Stat/Don't Move   | Yes/Yes |  No |  None |  None  |         None        |
+|    Sleep   | Sword| 4 | 0 |20|1/Str| 9|   None  |      Stat/Sleep     | Yes/Yes |  No |  None |  None  |         None        |
+|   Chrome   | Sword| 12| 24|24|1/Str| 9|   None  |          No         | Yes/Yes |  No |  None |  None  |   Initial:Reflect   |
+|   Diamond  | Sword| 12| 12|20|1/Str|10|   None  |          No         | Yes/Yes |  No |  None |  None  |         None        |
+|   Frozen   | Sword| 12| 12|24|1/Str|11|  Water  |    Spell/Icefall    |  No/Yes |  No |  None |  None  |         None        |
+|   Molten   | Sword| 12| 12|28|1/Str|11|   Fire  |     Spell/Flare     |  No/Yes |  No |  None |  None  |         None        |
+|    Rune    | Sword| 16| 16|32|1/Str|12|   None  |          No         |  No/Yes |  No |  None | +2 MA  |    Initial:Haste    |
+|  Nagrarock | Sword| 48| 48|44|1/Str| 9|  Nature |      Stat/Frog      | Yes/Yes |  No |  None |  None  |         None        |
+|    Onion   | Sword| 16| 0 |31|1/Str|14|   None  |    Spell/Downsize   |  No/Yes |  No |  None |  None  |         None        |
+|   Vahalla  |KSword| 32| 32|52|1/Str|16|   Holy  |          No         |  Forced |  No |  None |  None  | Always:Protect/Shell|
+|  Excalibur |KSword| 28| 20|48|1/Str|17|   None  | Spell/Shellbust Stab|  Forced |  No |  None |  None  |         None        |
+|  Defender  |KSword| 60| 0 |51|1/Str|18|   None  |          No         |  Forced |  No |  None |  None  |         None        |
+|  Seraphica |KSword| 40| 40|58|1/Str|19|   None  |          No         |  Forced |  No |  None |  None  |  Absorb/Boost:Holy  |
+|  Ragnarok  |KSword| 20| 20|49|1/Str|20|   Dark  |      Stat/Death     |  Forced |  No |  None |  None  |         None        |
+|    Earth   |Scroll|N/A|N/A|??|4/0v2|10|  Earth  |     Stat/Stupor     |   N/A   | N/A |  N/A  |   N/A  |         N/A         |
+|    Wind    |Scroll|N/A|N/A|??|4/0v2|10|   Wind  |     Stat/Poison     |   N/A   | N/A |  N/A  |   N/A  |         N/A         |
+|    Light   |Scroll|N/A|N/A|??|4/0v2|10|   Holy  |      Stat/Blind     |   N/A   | N/A |  N/A  |   N/A  |         N/A         |
+|    Bolt    |Scroll|N/A|N/A|??|4/1v2| 5|Lightning|    Cancel/Defend    |   N/A   | N/A |  N/A  |   N/A  |         N/A         |
+|   Quarter  |Scroll|N/A|N/A|??|4/0v1|25|   Dark  |   Stat/Don't Move   |   N/A   | N/A |  N/A  |   50   |         N/A         |
+|    Fast    |Scroll|N/A|N/A|??|4/0v1| 0|   None  |      Stat/Haste     |   N/A   | N/A |  N/A  |   50   |         N/A         |
+|    Slow    |Scroll|N/A|N/A|??|4/0v1| 0|   None  |      Stat/Slow      |   N/A   | N/A |  N/A  |   50   |         N/A         |
+|    Dome    |Scroll|N/A|N/A|??|4/0v2| 0|   None  |     Stat/Protect    |   N/A   | N/A |  N/A  |   50   |         N/A         |
+|    Shell   |Scroll|N/A|N/A|??|4/0v2| 0|   None  |      Stat/Shell     |   N/A   | N/A |  N/A  |   50   |         N/A         |
+|    Life    |Scroll|N/A|N/A|??|4/0v1|25|   Holy  |   Stat/Reflect(1)   |   N/A   | N/A |  N/A  |   70   |         N/A         |
+|  Tomahawk  |  Axe | 0 | 0 |10|1/Str| 7|   None  |          No         | Yes/Yes | Yes |  None |  None  |         None        |
+|   Hatchet  |  Axe | 28| 0 |25|1/Str|10|   None  |    Spell/Downsize   |  Forced |  No |  None |  None  |         None        |
+|   Slasher  |  Axe | 40| 0 |34|1/Str|13|   None  |      Stat/Slow      |  Forced |  No |  None |  None  |         None        |
+|  Lightning |  Rod | 20| 20|20|1/Str| 6|Lightning|   Spell/Chainbolt   | Yes/Yes |  No |  None |  None  |   Boost:Lightning   |
+|    Flame   |  Rod | 20| 20|20|1/Str| 6|   Fire  |     Spell/Singe     | Yes/Yes |  No |  None |  None  |      Boost:Fire     |
+|   Glacier  |  Rod | 20| 20|19|1/Str| 6|  Water  |    Spell/Icefall    | Yes/Yes |  No |  None |  None  |     Boost:Water     |
+|   Poison   |  Rod | 20| 20|25|1/Str| 7|  Nature |     Stat/Poison+    | Yes/Yes |  No |  None |  None  |     Boost:Nature    |
+|   Wizard   |  Rod | 20| 32|27|1/Str| 8|   None  |          No         | Yes/Yes |  No |  None | +2 MA  |         None        |
+|  Obsidian  |  Rod | 20| 20|26|1/Str|10|   None  |     Spell/Shard     |  Forced |  No |  None |  None  |         None        |
+|    Skull   |  Rod | 20| 20|30|1/Str| 9|   Dark  |     Spell/Wither    |  No/Yes |  No |  None |  None  |      Boost:Dark     |
+|    Royal   |  Rod | 20| 20|34|1/Str|11|   None  |          No         |  Forced |  No |  None |  None  |      Boost:All      |
+|   Walker   | Staff| 16| 24|18|1/Str| 6|   None  |          No         |  Forced |  No |  None | +1 Move|         None        |
+|    White   | Staff| 16| 24|23|1/Str| 7|   Holy  |          No         | Yes/Yes |  No |  None |  None  |   Initial:Reraise   |
+|   Healing  | Staff| 16| 24|34|1/Str|13|   Holy  |      Stat/Bless     |  Forced |  No |Healing|  None  |         None        |
+|   Rainbow  | Staff| 16| 24|23|1/Str| 8|  Water  |          No         | Yes/Yes |  No |  None |  None  |   Initial:Reflect   |
+|   Wizard   | Staff| 16| 40|29|1/Str| 9|   None  |          No         | Yes/Yes |  No |  None | +1 MA  |         None        |
+|   Golden   | Staff| 16| 40|35|1/Str|11|Lightning|          No         |  Forced |  No |  None |  None  |   Initial:Innocent  |
+|    Sage    | Staff| 16| 24|39|1/Str|10|   None  |          No         |  Forced |  No |  None |  None  |      Halve:All      |
+|    Miko    | Staff| 16| 24|35|1/Str|10|   Holy  |     Spell/Smite     |  No/Yes |  No |  None |  None  |      Boost:Holy     |
+|    Rose    | Flail| 16| 16|21|2/Prc| 7|  Nature |      Stat/Charm     | Yes/Yes |  No |  None |  None  |         None        |
+|    Flame   | Flail| 0 | 8 |19|1/Str| 9|   Fire  |     Stat/Stupor     | Yes/Yes |  No |  None |  None  |         None        |
+|   Morning  | Flail| 0 | 8 |21|1/Str|11|   Holy  |      Stat/Blind     |  No/Yes |  No |  None |  None  |         None        |
+|  Scorpion  | Flail| 0 | 0 |27|1/Str|13|   None  |     Stat/Poison+    |  No/Yes |  No |  None |  None  |         None        |
+|   Mythril  |  Gun | 0 | 8 |15|6/Dir| 8|   None  |          No         |  No/Yes |  No |  None |  None  |         None        |
+|   Romanda  |  Gun | 0 | 8 |24|8/Dir|10|   None  |          No         |  No/Yes |  No |  None |  None  |         None        |
+|   Musket   |  Gun | 16| 16|36|10Dir|12|   None  |          No         |  Forced |  No |  None |  None  |         None        |
+|   Grenado  |  Gun | 0 | 16|40|5/Dir|14|   None  |          No         |  No/Yes |  No |  None |  None  |         None        |
+|    Stone   |  Gun | 0 | 16|52|4/Dir|16|   None  |     Stat/Petrify    |  Forced |  No |  None |  None  |         None        |
+|   Cannon   |  Gun | 0 | 0 |54|15Dir|18|   None  |          No         |  Forced |  No |  None |  None  |  Always:Don't Move  |
+|   Hunting  |CrsBow| 0 | 0 |10|4/Dir| 5|   None  |   Stat/Don't Move   |  No/No  |  No |  None |  None  |         None        |
+|   Poison   |CrsBow| 0 | 0 |18|4/Dir| 6|  Nature |Stat/Poison AND Blind|  No/No  |  No |  None |  None  |         None        |
+| Executioner|CrsBow| 0 | 0 |25|4/Dir| 8|   None  |     Spell/Impale    |  No/No  |  No |  None |  None  |         None        |
+|   Lian Nu  |CrsBow| 0 | 0 |31|4/Dir| 8|   None  |     Spell/Attack    |  No/No  |  No |  None |  None  |         None        |
+|  Fastbolt  |CrsBow| 0 | 16|46|4/Dir|12|   None  |          No         |  Forced |  No |  None |  None  |    Initial:Haste    |
+| Gastrafitis|CrsBow| 0 | 0 |46|12Dir|14|   None  |          No         |  Forced |  No |  None |  None  |  Always:Don't Move  |
+|    Short   |LngBow| 0 | 0 | 5|6/Arc| 4|   None  |          No         |  No/No  |  No |  None |  None  |         None        |
+|   Silver   |LngBow| 0 | 8 |12|6/Arc| 5|   Holy  |   Spell/Seal Evil   |  No/No  |  No |  None |  None  |         None        |
+|    Cupid   |LngBow| 0 | 8 |19|6/Arc| 6|   None  |      Stat/Charm     |  No/No  |  No |  None |  None  |         None        |
+|    Flame   |LngBow| 0 | 16|28|6/Arc| 7|   Fire  |     Spell/Singe     |  No/No  |  No |  None |  None  |      Boost:Fire     |
+|   Mythril  |LngBow| 0 | 0 |21|6/Arc| 8|   None  |          No         |  No/No  |  No |  None |  None  |         None        |
+|    Hail    |LngBow| 0 | 24|39|6/Arc|10|  Water  |      Stat/Stop      |  Forced |  No |  None |  None  |         None        |
+|    Bolt    |LngBow| 0 | 24|39|6/Arc|10|Lightning|   Spell/Cloudbolt   |  Forced |  No |  None |  None  |         None        |
+|    Storm   |LngBow| 0 | 24|45|6/Arc|12|   Wind  |   Spell/Hurricane   |  Forced |  No |  None |  None  |         None        |
+|   Yoichi   |LngBow| 0 | 0 |49|6/Arc|14|   None  |          No         |  Forced |  No |  None | +1 SP  |         None        |
+|    Lamia   |Instru| 0 | 32|21|3/Dir| 7|   None  |      Stat/Charm     |  No/No  |  No |  None |  None  |         None        |
+|    Blood   |Instru| 0 | 0 |28|3/Dir| 8|   Dark  |          No         |  No/No  |  No | Drain |  None  |         None        |
+|    Fairy   |Instru| 0 | 32|29|3/Dir| 9|   None  |      Stat/Sleep     |  No/No  |  No |  None |  None  |         None        |
+|   Battle   |Instru| 0 | 32|35|3/Dir|11|   None  |     Stat/Stupor     |  Forced |  No |  None |  None  |         None        |
+|     War    |Instru| 24| 16|39|3/Dir|12|   None  |      Stat/Slow      |  Forced |  No |  None |  None  |         None        |
+|    Fell    |Instru| 32| 0 |34|1/Str|13|   Dark  |      Stat/Death     |  Forced |  No |  None |  None  |         None        |
+|    Spell   | Book | 0 | 16| 7|3/Dir| 5|   None  |  Spell/Offensive(2) |  No/No  |  No |  None |  None  |         None        |
+|   Papyrus  | Book | 0 | 16|19|3/Dir| 8|   None  |  Spell/Offensive(3) |  No/No  |  No |  None |  None  |         None        |
+|   Health   | Book | 0 | 16|35|3/Dir|12|   None  |   Spell/Support(4)  |  No/No  |  No |Healing|  None  |         None        |
+|  Grimiore  | Book | 0 | 16|40|3/Dir|11|   None  |     Spell/Ultima    |  No/No  |  No |  None |  None  |     Always:Blink    |
+|   Parasol  | Lance| 40| 40|32|2/Prc| 7|   None  |          No         | Yes/No  |  No |  None |  None  |   Halve:Fire/Water  |
+|   Javelin  | Lance| 12| 0 |15|2/Prc| 8|   None  |          No         | Yes/No  | Yes |  None |  None  |         None        |
+|   Harpoon  | Lance| 12| 0 |19|3/Prc| 9|   None  |          No         | Yes/No  |  No |  None |  None  |         None        |
+|  Gae Bolg  | Lance| 24| 12|30|2/Prc|10|  Water  |     Spell/Shard     |  Forced |  No |  None |  None  |         None        |
+|    Hell    | Lance| 24| 12|34|2/Prc|11|   Fire  |    Spell/Soultint   |  Forced |  No |  None |  None  |         None        |
+|   Destiny  | Lance| 24| 12|34|2/Prc|12|   Holy  |     Spell/Impale    |  Forced |  No |  None |  None  |         None        |
+|   Gungnir  | Lance| 32| 16|40|2/Prc|13|  Earth  |          No         |  Forced |  No |  None | +1 PA  |         None        |
+|   Cursed   | Lance| 24| 12|43|2/Prc|14|   Dark  |     Spell/Inverse   |  Forced |  No |Healing|  None  |         None        |
+|    Torch   | Pole | 20| 20|21|2/Prc| 7|   Fire  |       Stat/Oil      | Yes/No  |  No |  None |  None  |      Halve:Dark     |
+|   Bamboo   | Pole | 20| 12|21|2/Prc| 8|  Nature |   Spell/Air Cannon  | Yes/No  |  No |  None |  None  |         None        |
+| Threepiece | Pole | 32| 0 |24|1/Str| 9|   None  |     Spell/Attack    | Yes/Yes |  No |  None |  None  |         None        |
+|   Cudgel   | Pole | 32| 0 |30|1/Str|10|   None  |     Spell/Wither    | Yes/No  |  No |  None |  None  |         None        |
+|   Whisker  | Pole | 32| 16|36|2/Prc|11|  Water  |      Stat/Frog      |  Forced |  No |  None |  None  |         None        |
+|  Foulwind  | Pole | 32| 16|38|2/Prc|12|   Wind  |     Stat/Defile     |  Forced |  No |  None |  None  |         None        |
+|    Ivory   | Pole | 20| 32|41|2/Prc|13|  Earth  |          No         |  Forced |  No |  None | +1 MA  |         None        |
+|    Goku    | Pole | 32| 60|57|3/Prc|14|   None  |          No         |  Forced |  No |Unbrkbl|  None  |         None        |
+|Featherscale|  Bag | 0 | 0 | 5|1/Dir| 4|   None  |          No         |  No/No  |  No |  None | +1 PA  |         None        |
+|  Hydraskin |  Bag | 16| 0 |15|1/Dir| 6|   None  |          No         |  No/No  |  No |  None | +1 SP  |         None        |
+|  Tigerfelt |  Bag | 16| 16|25|1/Dir| 8|   None  |          No         |  No/No  |  No |  None |  None  |     Always:Regen    |
+| Phoenixash |  Bag | 0 | 16|30|1/Dir| 9|   None  |          No         |  No/No  |  No |  None | +1 MA  |   Initial:Reraise   |
+--------------------------------------------------------------------------------------------------------------------------------
+|   Armor   | Type | HP| MP|Wt|PEV|MEV|       Special       |       Stat      |                Status                |Cond|Efct|
+--------------------------------------------------------------------------------------------------------------------------------
+|  Buckler  |Shield|N/A|N/A| 3| 12| 8 |    All can equip    |       None      |                 None                 | N/A| N/A|
+|Neutralizer|Shield|N/A|N/A| 6| 12| 12|Ignore ElemWeak&Halve|       None      |                 None                 |Take|Self|
+| Lightning |Shield|N/A|N/A| 9| 32| 0 |         None        |       None      |Absorb:Lightning/Halve:Water/Weak:Fire| N/A| N/A|
+|   Flame   |Shield|N/A|N/A| 9| 32| 0 |         None        |       None      |Absorb:Fire/Halve:Lightning/Weak:Water| N/A| N/A|
+|    Ice    |Shield|N/A|N/A| 9| 32| 0 |         None        |       None      |Absorb:Water/Halve:Fire/Weak:Lightning| N/A| N/A|
+|   Flash   |Shield|N/A|N/A|12| 24| 24|         None        |      +1 SP      |                 None                 | N/A| N/A|
+|   Spiked  |Shield|N/A|N/A|12| 36| 0 |S-Recoil upon S-EV(5)|       None      |                 None                 |Self|Caus|
+|   Genji   |Shield|N/A|N/A|14| 48| 0 |         None        |       None      |          Null:Most status(6)         | N/A| N/A|
+|    Opal   |Shield|N/A|N/A|14| 32| 20|         None        |       None      |             Always:Regen             | N/A| N/A|
+|   Chrome  |Shield|N/A|N/A|14| 40| 16|         None        |       None      |           Initial:Reflect            | N/A| N/A|
+|   Aegis   |Shield|N/A|N/A|16| 8 | 48|         None        |      +1 MA      |                 None                 | N/A| N/A|
+|   Kaiser  |Shield|N/A|N/A|22| 32| 32|         None        |       None      |          Boost:All Elements          | N/A| N/A|
+|  Venetian |Shield|N/A|N/A|22| 20| 20|         None        |       None      |          Halve:All Elements          | N/A| N/A|
+|   Astral  |Shield|N/A|N/A|21| 0 | 60|EV=48/48 if Invisible|       None      |                 None                 |Self|Self|
+|   Sport   | Helm | 30| 0 | 4|N/A|N/A|  Ignore UserRecoil  |       None      |                 None                 |Self|Self|
+|   Cross   | Helm | 45| 0 | 7|N/A|N/A|    +20% Base HIt    |       None      |                 None                 | N/A| N/A|
+|  Pumpkin  | Helm | 60| 10| 8|N/A|N/A|         None        |       None      |              Boost:Dark              | N/A| N/A|
+|  Destiny  | Helm | 0 | 30| 7|N/A|N/A|UsrMaxHP DMG upon (7)|       None      |                 None                 |Take|Caus|
+|  Timeless | Helm | 0 | 30| 9|N/A|N/A|         None        |       None      |       Initial:Stop/Always:Haste      | N/A| N/A|
+|  Crystal  | Helm | 75| 0 |13|N/A|N/A|User start with 10 AP|       None      |                 None                 | N/A| N/A|
+| Steel Pot | Helm | 90| 0 | 9|N/A|N/A|         None        |       None      |                 None                 | N/A| N/A|
+|  Illusion | Helm |100| 20| 1|N/A|N/A|         None        |      +2 MA      |            Always:Stupor             | N/A| N/A|
+|   Hanya   | Helm |100| 0 |16|N/A|N/A|   Ignore ElemWeak   |       None      |          Null:Petrify,Dead           |Take|Self|
+|   Genji   | Helm |100| 0 |13|N/A|N/A|         None        |      +1 PA      |                 None                 | N/A| N/A|
+|   Grand   | Helm |115| 0 |14|N/A|N/A|         None        |       None      |    Null:Addle,Blind,Stupor,Sleep     | N/A| N/A|
+|   Parade  | Helm |130| 0 |14|N/A|N/A| Cannot be destroyed |       None      |                 None                 | N/A| N/A|
+|   Ribbon  |  Hat | 20| 0 | 4|N/A|N/A|         None        |       None      |          Null:Most status(6)         | N/A| N/A|
+|   Turban  |  Hat | 10| 0 | 7|N/A|N/A|         None        |      +2 PA      |                 None                 | N/A| N/A|
+|   Flash   |  Hat | 15| 12| 8|N/A|N/A|         None        |     +1 MA/SP    |                 None                 | N/A| N/A|
+|   Miter   |  Hat | 20| 15| 9|N/A|N/A|         None        |      +2 MA      |                 None                 | N/A| N/A|
+|   Viking  |  Hat | 30| 0 | 9|N/A|N/A|         None        |       None      |   Initial:Berserk/Null:Stupor,Sleep  | N/A| N/A|
+|   Hermes  |  Hat | 35| 0 |11|N/A|N/A|Invisible if Re-equip|      +1 SP      |   Initial:Invisible/Null:DMove,DAct  |Take|Self|
+| Geomancer |  Hat | 40| 20| 9|N/A|N/A|         None        |     +1 PA/MA    |                 None                 | N/A| N/A|
+|   Golden  |  Hat | 50| 50| 9|N/A|N/A|         None        |       None      |              Null:Addle              | N/A| N/A|
+|    Halo   |  Hat | 20| 60| 8|N/A|N/A|         None        |       None      |             Initial:Bless            | N/A| N/A|
+|  Valkyrie |  Hat | 30| 50|11|N/A|N/A|         None        |       None      |          Initial:Float,Regen         | N/A| N/A|
+|   Black   |  Hat | 72| 0 | 7|N/A|N/A|         None        |       None      |                 None                 | N/A| N/A|
+|   Wreath  |  Hat | 10| 0 | 9|N/A|N/A|  Allows Attack*(8)  |      +1 PA      |                 None                 | N/A|Self|
+|   Curse   | Armor| 0 | 50|13|N/A|N/A|Add:Curs/Slep upon(7)|       None      |                 None                 |Take|Caus|
+| Fishscale | Armor| 60| 0 | 6|N/A|N/A|    All can equip    |       None      |                 None                 | N/A| N/A|
+|   Wooden  | Armor| 80| 0 |10|N/A|N/A| Ignore Crit/KB/WPrc |       None      |      Weak:Fire/Halve:Nature,Wind     |Take|Self|
+|   Mystic  | Armor|100| 0 |18|N/A|N/A|   Ignore ElemBoost  |       None      |         Halve:Earth,Dark,Holy        |Take|Self|
+|Adamantoise| Armor|120| 0 |17|N/A|N/A|         None        |       None      |            Always:Protect            | N/A| N/A|
+|   Runic   | Armor|120| 0 |17|N/A|N/A|         None        |       None      |             Always:Shell             | N/A| N/A|
+|   Genji   | Armor|140| 0 |24|N/A|N/A|         None        |       None      |     Initial:Reraise/Always:Regen     | N/A| N/A|
+|   Dragon  | Armor|160| 0 |24|N/A|N/A|         None        |       None      |      Halve:Fire,Water,Lightning      | N/A| N/A|
+|  Timeless | Armor|170| 0 |26|N/A|N/A| +Prt/Shl if revived |       None      |   Initial:Protect,Shell/Null:Curse   | N/A| N/A|
+|  Reflect  | Armor|200| 0 |27|N/A|N/A|         None        |       None      |            Always:Reflect            | N/A| N/A|
+|  Immortal | Armor|220| 0 |27|N/A|N/A|         None        |       None      |             Null:Crystal             | N/A| N/A|
+|  Peytral  | Armor|255| 0 |27|N/A|N/A| Cannot be destroyed |       None      |                 None                 | N/A| N/A|
+|    Torn   | Shirt| 10| 0 | 4|N/A|N/A|Brk TarBodyEQ upon(7)|       None      |                 None                 |Take|Caus|
+|   Power   | Shirt| 20| 0 | 8|N/A|N/A|         None        |      +2 PA      |                 None                 | N/A| N/A|
+|   Brave   | Shirt| 20| 20|13|N/A|N/A|         None        |       None      |     Initial:Reraise/Always:Regen     | N/A| N/A|
+|   Black   | Shirt| 30| 0 | 5|N/A|N/A| Ignore WethrDMGMult |       None      |                 None                 |TkDl|Self|
+|   Nettle  | Shirt| 45| 0 |12|N/A|N/A| N-Recoil on P.DMG(5)|       None      |          Boost/Absorb:Nature         |Take|Caus|
+|   Mirage  | Shirt| 40| 0 | 9|N/A|N/A|         None        |      +1 SP      |       Null:Charm,Petrify,Poison      | N/A| N/A|
+|    Judo   | Shirt| 55| 0 |11|N/A|N/A|         None        |      +1 PA      |       Null:Dead,Death SEntence       | N/A| N/A|
+|   Tengu   | Shirt| 60| 40|13|N/A|N/A|         None        |       None      |           Boost/Absorb:Wind          | N/A| N/A|
+| Camoflage | Shirt| 75| 0 |12| 24| 0 |         None        |       None      |                 None                 | N/A| N/A|
+|   Earth   | Shirt| 90| 10|15|N/A|N/A|         None        |       None      |          Boost/Absorb:Earth          | N/A| N/A|
+|   Rubber  | Shirt|105| 30|16|N/A|N/A|         None        |       None      |            Null:Lightning            | N/A| N/A|
+|Timebreaker| Shirt|120| 15|14|N/A|N/A|         None        |       None      |            Null:Slow/Stop            | N/A| N/A|
+|   Black   | Robe | 48| 16|10|N/A|N/A|         None        |       None      |      Boost:Fire,Water,Lightning      | N/A| N/A|
+|   Light   | Robe | 54| 22|11|N/A|N/A|         None        |     +1 PA/MA    |            Null:Blind,Oil            | N/A| N/A|
+|   Wizard  | Robe | 72| 28|14|N/A|N/A|         None        |      +2 MA      |                 None                 | N/A| N/A|
+|  Vampyric | Robe | 90| 30|17|N/A|N/A|         None        |       None      |           Boost/Absorb:Dark          | N/A| N/A|
+|  Majestic | Robe |108| 37|30|N/A|N/A|         None        |   +2 PA/+1 MA   |         Always:Protect/Shell         | N/A| N/A|
+|    Sage   | Robe |126| 44|31|N/A|N/A|         None        |       None      |          Halve:All Elements          | N/A| N/A|
+| Chameleon | Robe |144| 50|27|N/A|N/A|         None        |       None      |Initial:Invisible/Halve:ERT,WND,NATURE| N/A| N/A|
+|  Angelic  | Robe |162| 60|27|N/A|N/A|         None        |       None      |Boost:Holy/Null:Blood Suck,Dark,Undead| N/A| N/A|
+|   Desert  | Robe |180| 80|28|N/A|N/A|         None        |       None      |           Boost/Absorb:Fire          | N/A| N/A|
+|  Glacier  | Robe |180| 80|28|N/A|N/A|         None        |       None      |          Boost/Absorb:Water          | N/A| N/A|
+|  Battery  | Robe |180| 80|28|N/A|N/A|         None        |       None      |        Boost/Absorb:Lightning        | N/A| N/A|
+|   White   | Robe |200|100|34|N/A|N/A|   Ignore ElemWeak   |       None      |              Absorb:Holy             |Take|Self|
+|   Spiked  | Shoe |N/A|N/A| 8| 0 | 0 |         None        |    +1 Jump/PA   |            Null:Don't Move           | N/A| N/A|
+|   Rubber  | Shoe |N/A|N/A| 7| 0 | 0 |         None        |       None      |         Null:Lightning,Water         | N/A| N/A|
+|  Sneakers | Shoe |N/A|N/A| 8| 16| 0 |         None        |      +1 SP      |             Null:Stop,Slow           | N/A| N/A|
+|   Battle  | Shoe |N/A|N/A| 8| 0 | 0 |         None        |   +1 Move/Jump  |                 None                 | N/A| N/A|
+|    Red    | Shoe | 0 | 40| 8| 0 | 0 |         None        |    +1 Move/MA   |                 None                 | N/A| N/A|
+|  Timeless | Shoe | 40| 0 | 7| 0 | 16|    Indestructible   |       None      |                 None                 | N/A| N/A|
+|    Warp   | Shoe |N/A|N/A| 6| 8 | 8 |         None        |       None      |             Always:Blink             | N/A| N/A|
+|    Moon   | Shoe |N/A|N/A| 8| 0 | 0 |       +15 CON       |   -2 PA/MA (9)  |              Null:Stupor             | N/A| N/A|
+|   Bracer  |Armlet|N/A|N/A| 6| 0 | 0 |         None        |      +2 PA      |                 None                 | N/A| N/A|
+|   Magic   |Armlet|N/A|N/A| 6| 0 | 0 |         None        |      +2 MA      |                 None                 | N/A| N/A|
+|  Diamond  |Armlet|N/A|N/A| 5| 0 | 0 |         None        |     +1 PA/MA    |             Null:Oil,Blind           | N/A| N/A|
+|  Gemstone |Armlet|N/A|N/A|10| 0 | 0 |         None        |       None      |           Boost:All Elements         | N/A| N/A|
+|  Brigand  |Armlet|N/A|N/A| 8| 0 | 0 |    If KO, +50 CT    |      +1 SP      |                 None                 |Deal|Self|
+| Amplifier |Armlet|N/A|N/A| 9| 0 | 0 |     +1 Range/AoE    |       None      |                 None                 | N/A| N/A|
+|   Genji   |Armlet|N/A|N/A|24| 0 | 0 |         None        |       None      |          Absorb:All Elements         | N/A| N/A|
+|  Lifelink |Armlet|N/A|N/A|10| 0 | 0 |         None        |       None      |     Initial:Reraise/Always:Regen     | N/A| N/A|
+|Anniversary| Ring |N/A|N/A| 5| 0 | 0 | Ignore ElemAbsrb(10)|       None      |          Null:Most status(6)         |Deal|Trgt|
+|   Cursed  | Ring | 50| 50|11| 0 | 0 |         None        |   +1 SP/MA/PA   |   Always:Undead/Null:Petrify,Poison  | N/A| N/A|
+|  Reflect  | Ring |N/A|N/A| 9| 0 | 0 |         None        |       None      | Always:Reflect/Null:DMove,DAct,Addle | N/A| N/A|
+|   Angel   | Ring |N/A|N/A| 7| 0 | 0 |         None        |       None      |  Initial:Reraise/Null:Defile,Dead,DS | N/A| N/A|
+|   Power   | Ring |N/A|N/A| 9| 0 | 0 |         None        |      +1 PA      |   Initial:Protect,Shell/Null:Sleep   | N/A| N/A|
+|    Mind   | Ring |N/A|N/A| 9| 0 | 0 |         None        |      +1 MA      |       Initial:Haste/Null:Charm       | N/A| N/A|
+|  Barrier  | Ring |N/A|N/A| 5| 0 | 0 |         None        |       None      |             Always:Protect           | N/A| N/A|
+|   Shield  | Ring |N/A|N/A| 5| 0 | 0 |         None        |       None      |              Always:Shell            | N/A| N/A|
+|   Wizard  |Mantle|N/A|N/A| 9| 20| 20|         None        |      +1 MA      |                 None                 | N/A| N/A|
+|   Tiger   |Mantle|N/A|N/A| 9| 20| 20|         None        |      +1 PA      |                 None                 | N/A| N/A|
+|    Elf    |Mantle|N/A|N/A|14| 24| 24|         None        |       None      |      Halve:Fire,Water,Lightning      | N/A| N/A|
+|  Vampire  |Mantle|N/A|N/A|14| 28| 28|         None        |       None      | Boost:Dark/Null:Undead,Vampire,Curse | N/A| N/A|
+|  Reflect  |Mantle|N/A|N/A| 8| 12| 12| Reaction = DMG Split|       None      |                 None                 |Take|Self|
+|   Spiked  |Mantle|N/A|N/A| 8| 16| 16|S-Recoil upon A-EV(5)|       None      |                 None                 |Self|Caus|
+|  Feather  |Mantle|N/A|N/A|12| 32| 32|         None        |       None      |                 None                 | N/A| N/A|
+|Windstriped|Mantle|N/A|N/A|21| 40| 0 |Invisible if Re-equip|       None      |           Initial:Invisible          |Self|Self|
+--------------------------------------------------------------------------------------------------------------------------------
+|    Item   |     WP    |         HP        |         MP        |Wt| Element |                  Proc/Special                   |
+--------------------------------------------------------------------------------------------------------------------------------
+|   Potion  |    N/A    |    30 + tarLVL    |        N/A        | 1|   Holy  |                      None                       |
+|   Ether   |    N/A    |        N/A        |  15 + tarLVL / 2  | 1|   Holy  |                      None                       |
+| Phnx Down |    N/A    |RN{1...(20+tarLVL)}|        N/A        | 2|   Holy  |                 Cancel:Dead(11)                 |
+|Glass Beakr| RN{1...3} |        N/A        |        N/A        | 1|   None  |                 100% Knockback                  |
+|  Bandage  |    N/A    |        N/A        |        N/A        | 1|   None  |           Cancel:Don't Move,Don't Act           |
+|Maiden Kiss|    N/A    |        N/A        |        N/A        | 1|   None  |                Cancel:Sleep,Frog                |
+|  Antidote |    N/A    |        N/A        |        N/A        | 1|   None  |               Cancel:Blind,Poison               |
+| Mind Pill |    N/A    |        N/A        |        N/A        | 1|   None  |               Cancel:Addle,Stupor               |
+| Bath Salts|    N/A    |        N/A        |        N/A        | 1|   None  |                Cancel:Oil,Petrify               |
+| Everclear |    N/A    |        N/A        |        N/A        | 1|   Fire  |                      None                       |
+|  Dungball |    N/A    |        N/A        |        N/A        | 1|  Nature |                      None                       |
+|  Snowball |    N/A    |        N/A        |        N/A        | 1|  Water  |                      None                       |
+| Saint Icon|    N/A    |        N/A        |        N/A        | 1|   Holy  |                      None                       |
+|LitningFlsk|    N/A    |        N/A        |        N/A        | 1|Lightning|                      None                       |
+--------------------------------------------------------------------------------------------------------------------------------
+
+Shard is Climhazzard from FFT
+Inverse has the following effect: Let Y be tarHP = Y% * maxHP.
+If Y is at least 50, then INverse damages for (Y - 50) * 2% HP.
+If Y is less than 50, then Inverse heals for (50 - Y) * 2% HP.
+Let a target's affected stat be Y. If an attack or effect drains that stat by X and Y < X, the user heals his corresponding stat by Y, even though he dealt X damage.
+If an attack drains HP from multiple targets, the attacker's resultant healing is summed over all targets.
+(1) This spell always does Remove: Dead, and can be used even on living units.
+(2) In place of ATTACK, the user can cast Quake, Aero, Dia, Chainbolt by using a Earth, Wind, Light, or Bolt Scroll, respectively. Upon using a spell, the corresponding scroll is withdrawn from the book used in the attack (meaning if inventory does not contain one of the above scrolls, the spell cannot be selected). Thus, this book has 0% proc rate.
+(3) In place of ATTACK, the user can cast Demi, Slow by using a Quarter and Slow Scroll, respectively. Upon using a spell, the corresponding scroll is withdrawn from the book used in the attack (meaning if inventory does not contain one of the above scrolls, the spell cannot be selected). Thus, this book has 0% proc rate.
+(4) In place of ATTACK, the user can cast Haste, Protect, Shell, Reflect by using a Fast, Dome, Shell, and Life scroll, respectively. Upon using a spell, the corresponding scroll is withdrawn from the book used in the attack (meaning if inventory does not contain one of the above scrolls, the spell cannot be selected). Thus, this book has 0% proc rate.
+All of the spells and corresponding scrolls mentioned in (2)-(4) can be used if the user equips Grimoire. Similarly, having Red Magic opens up the use of all scrolls as long as a book is equipped.
+(5) The Effect can only be used upon a unit within 1v3 of the user.
+S-Recoil deals CasLVL + TarLVL recoil damage. Since S-Recoil damage is recoil damage, it is blocked by Sport Helmet and Limitless rather than Disarm. Since N-Recoil does not replace reactions, any item that induces S-Recoil does not prevent the user from also using reactions. 
+N-Recoil deals TarLVL recoil damage. Since N-Recoil damage is recoil damage, it is blocked by Sport Helmet and Limitless rather than Disarm. Since N-Recoil does not replace reactions, any item that induces N-Recoil does not prevent the user from also using reactions. 
+(6) Null: Everything but Crystal, Defend, Perform, Jump, Charging, Critical
+(7) Activate upon breaking the gear in question OR fatal HP damage. After activation, break the gear, even if the target is immune to the effect. If the wearer has upkeep, block the effect.
+(8) ATtack* costs the current amount of AP and increases hit rate after evasion by AP * 15%.
+(9) Stat decrements and stat boosts are collectively summed in calculating stats in the formation screen, but if stat sum < 1, the sum is set to 1 in the formation screen.
+(10) Does not include Dark Elemental.
+(11) If elemental weak converts healing into damage (even if the target is already dead), proc fails.
+
+
+Section 15 (Charge Time Modding):
+
+Any skill that causes the user to gain "Charging" has CT = RU[Base CT * 16 / (sqrt{casmaxMP + 100} + casSPD)]
+NOTE: This does not include skills that give the user "Performing" or "Jumping" while readying his attack.
+
+
+Section 16 (Job Modding):
+
+Under Proc, unless prefaced with a % to Cancel / Add, it implies 100%
+AND (means you modify all the status)--If a list is given without any conditional, AND is implied.
+XOR (means you modify only one of the status)
+OR (means you modify any number of status listed)
+Unless prefaced, any reference to any stat always refers to the user's stats.
+Unless noted otherwise, %DMG means that the overall damage is only increased by weather, elemental, and healing boost (if absorbed). All other overall multipliers can only reduce damage. Compats affect overall hit chance; XA multipliers affect the XA component of hit chance.
+Unless noted otherwise, %HEAL means that the overall healing is only modified by elemental weak, null, weather, and healing boost. Compats affect overall hit chance; XA multipliers affect the XA component of hit chance.
+LEvel 1 = 100 JP
+Level 2 = 300 JP
+Level 3 = 600 JP
+Level 4 = 1000 JP
+Level 5 = 1500 JP
+Level 6 = 2100 JP
+Level 7 = 2800 JP
+Level 8 = 3600 JP
+
+==========================================================================
+
+Squire
+EQUIP: All
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 75| 90| 90|100| 9 | 15| 55| 55| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 10-11 | 4| 3| 6|-----------------
+| 25| M |102-108| 26-28 | 6| 5| 8|-----------------
+| 50| M |177-188| 42-45 | 8| 6|10|-----------------
+| 1 | F | 28-29 | 11-11 | 3| 4| 6|-----------------
+| 25| F | 95-101| 28-29 | 5| 6| 8|-----------------
+| 50| F |165-176| 45-48 | 6| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| Charge +1 |  Weapon Formula, XA+1 | 0| 2|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |         None        | PhysDMG| 100|
+| Charge +3 |  Weapon Formula, XA+3 | 0| 3|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |         None        | PhysDMG| 200|
+| Charge +5 |  Weapon Formula, XA+5 | 0| 5|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |         None        | PhysDMG| 300|
+| Charge +7 |  Weapon Formula, XA+7 | 0| 8|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |         None        | PhysDMG| 400|
+| Charge +10| Weapon Formula, XA+10 | 0|12|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |         None        | PhysDMG| 600|
+|  Caution  |                                                                                                                                     | 200|
+|AbsrbUsedMP|                                                                                                                                     | 200|
+|   Upkeep  |                                                                                                                                     | 300|
+|Move-Get AP|                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+=========================================================================
+
+Skirmisher (Level 3 Squire)
+EQUIP: Spear, Knife, Sword, Shield, Shirt, Helmet, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|120| 55|100| 80|100| 10| 18| 50| 60| 67| 12 | 12 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 36-38 |  7-8  | 5| 3| 6|-----------------
+| 25| M |114-122| 17-18 | 7| 4| 8|-----------------
+| 50| M |196-209| 27-29 | 9| 5|10|-----------------
+| 1 | F | 33-35 |  8-8  | 4| 4| 6|-----------------
+| 25| F |106-114| 18-19 | 5| 5| 8|-----------------
+| 50| F |183-196| 29-31 | 7| 7|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|  Strike!  |     Weapon Formula    | 5| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    |PEV|Yes|100| No|  None |         None        | PhysDMG| 100|
+|Shield Bash|    PA * [SP-EV / 5]   | 0| 0|  1NSv1  |   None  |Cancel:Defend,Charge,Perform| No| No| No| No| Shield|         None        | PhysDMG| 250|
+| Chain Toss| RN{1...PA * RU{LVL/5}}| 0| 0|  3NSv3  |   None  |             None           |PEV|Yes|Yes| No|  None |    IF EVD, -15 CT   | PhysDMG| 150|
+|   Sweep   |     Weapon Formula    | 8| 0| 1-1NSv1 |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No| 2+/Prc|         None        | PhysDMG| 250|
+|   Impale  | min{200,20% tarmaxHP} | 0| 0|  1NSv1  |   None  |             None           | No| No| No| No| Bladed| IF KO, brk:tarBodyEQ| FixdDMG| 350|
+|   Fix Up  |    tarBodyEQHP / 2    | 5| 0|    3    |   None  |             None           | No| No| No| No|  None |         None        |HHEAL(1)| 200|
+|Harden Mind|                                                                                                                                     | 250|
+| Monkeygrip|                                                                                                                                     | 400|
+| Fleetfoot |                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) This cannot be reduced and can only be boosted by Healing Boost.
+Bladed means Knife, Sword, Knight Sword, Spear, Axe, Flail, Katana
+2+/Prc refers to the range (2+) and targeting type (Piercing) of the weapon.
+
+=========================================================================
+
+Archer (Level 3 Squire)
+Equip: Gun, Crossbow, Longbow, Knife, Shield, Shirt, Hat, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 55| 95| 85|100| 10| 18| 60| 50| 67| 12 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 |  7-8  | 4| 3| 6|-----------------
+| 25| M | 95-101| 17-18 | 6| 4| 8|-----------------
+| 50| M |163-174| 27-29 | 8| 6|10|-----------------
+| 1 | F | 28-29 |  8-8  | 3| 4| 6|-----------------
+| 25| F | 89-95 | 18-19 | 5| 6| 8|-----------------
+| 50| F |152-163| 29-31 | 6| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| Head Break|    (PA + WP + 35)%    | 0| 0|  Weapon |   None  |  If tar has no HeadEQ, (1) |PEV| No| No| No|  None |   Break:tarHead EQ  |  Equip | 250|
+| Shield Brk|    (PA + WP + 10)%    | 0| 0|  Weapon |   None  |  If tar has no Shield, (2) |(3)| No| No| No|  None |   Break:tarShield   |  Equip | 350|
+|Armor Break|    (PA + WP + 25)%    | 0| 0|  Weapon |   None  |If tar has no BodyEQ, Attack|PEV| No| No| No|  None |   Break:tarBody EQ  |  Equip | 400|
+| Fast Bolt |    [SP * 4/5] * WP    | 6| 0|  Weapon |Wpn+Lghtn|             None           |   Weapon  | No|  None | Ignore Reactions(4) | PhysDMG| 300|
+| Seal Evil |       (SP + 70)%      | 0| 0|  Weapon |   None  |  If tar is Undead, Petrify | No| No| No| No|  None |         None        |N.Status| 200|
+| EQ Ranged |                                                                                                                                     | 300|
+|Silent Walk|                                                                                                                                     | 450|
+|Secret Hunt|                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+NOTE: Any skill that defaults to ATTACK (or a similar variant) takes the accuracy of the weapon (not that of the Break skill).
+(1) is like ATTACK, but DMG = MA * WP
+(2) is like ATTACK, but DMG = PA * WP
+(3) SP-EV cannot block this attack.
+(4) Reactions here mean active reactions, those that proc an effect from their activation. These include any triggered effect (other than N-Recoil) because they all replace a unit's reaction slot upon activation.
+
+==========================================================================
+
+Lancer (Level 4 Skirmrisher)
+EQUIP: Spear, Sword, Flail, Shield, Helmet, Armor, Bag, Book, Accessories
+INNATE: LEVEL/VERTICAL JUMP +1
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|120| 50|105| 80|100| 9 | 18| 50| 60| 67| 16 |  8 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 36-38 |  7-7  | 5| 3| 6|-----------------
+| 25| M |122-130| 15-16 | 8| 4| 8|-----------------
+| 50| M |212-226| 25-26 |10| 5|10|-----------------
+| 1 | F | 33-35 |  8-8  | 4| 4| 6|-----------------
+| 25| F |114-122| 16-18 | 6| 5| 8|-----------------
+| 50| F |198-212| 26-28 | 8| 7|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|Jump Boost1|      JUMP Formula     | 0|??|  +1v+1  |   None  |             None           | No| No| No| No|  None |   +Jumping to self  |P.DMG(1)| 250|
+|Jump Boost2|      JUMP Formula     | 0|??|  +1v+1  |   None  |             None           | No| No| No| No|  None |   +Jumping to self  |P.DMG(1)| 250|
+|Jump Boost3|      JUMP Formula     | 0|??|  +1v+1  |   None  |             None           | No| No| No| No|  None |   +Jumping to self  |P.DMG(1)| 250|
+|Jump Boost4|      JUMP Formula     | 0|??|  +1v+1  |   None  |             None           | No| No| No| No|  None |   +Jumping to self  |P.DMG(1)| 250|
+|Jump Boost5|      JUMP Formula     | 0|??|  +1v+1  |   None  |             None           | No| No| No| No|  None |   +Jumping to self  |P.DMG(1)| 250|
+|  Counter  |                                                                                                                                     | 300|
+| Overwhelm |                                                                                                                                     | 400|
+| EQ Polearm|                                                                                                                                     | 200|
+|  Scouting |                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+The CT of Jump is [50 / UserSPD], but CAN be affected by Short Charge and Non-Charge.
+(1) This only takes overall damage boosting multipliers (like overwhelm) WITHOUT ANY DAMAGE BOOST FOR EQUIPPING SPEARS, but takes all hindering multipliers (like DEFUP, zodiacs, etc.)
+NOTE: Using JUMP counts as using both MOVE and ACT in terms of spent CT. Hence, Don't Move and Don't Act prevents JUMP.
+NOTE: While airborne, the timer on status effects does not decrease.
+
+==========================================================================
+
+Paladin (Level 4 Skirmrisher)
+EQUIP: KnightSword, Sword, Axe, Shield, Helmet, Armor, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|130| 80| 80| 80|100| 9 | 14| 60| 60| 67| 12 | 12 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 39-41 | 11-11 | 4| 3| 6|-----------------
+| 25| M |132-141| 29-31 | 5| 4| 8|-----------------
+| 50| M |230-245| 47-51 | 7| 5|10|-----------------
+| 1 | F | 36-38 | 12-12 | 3| 4| 6|-----------------
+| 25| F |123-132| 31-33 | 4| 5| 8|-----------------
+| 50| F |214-230| 51-54 | 5| 7|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|Transfusion|    40% of casmaxHP    | 0| 0|Slf-2NSv3|   None  |             None           | No| No| No| No|  None |      50% Recoil     | HP%HEAL| 100|
+|   Nurse   |    33% of casmaxHP    | 8| 0|   Self  |   Holy  |    Add:Defend AND Regen    | No| No| No| No|  None |         None        | HP%HEAL| 200|
+|   Shield  |    (135 - casCorr)%   |20| 0| Self-1v1|   None  |    Add:Protect AND Shell   | No| No| No| No|  None |         None        |P.Status| 300|
+|  Barrier  |    (135 - casCorr)%   |24| 0|    3    |   None  |   Add:Reflect AND Reraise  | No| No| No| No|  None |         None        |P.Status| 300|
+|   Purge   |    (WP + PA + 60)%    |24| 0|   1v0   |   None  |     If tar is (1), Dead    | No| No| No| No|  None |         None        |N.Status| 400|
+|  Guardian |          100%         |18| 0|   Self  |   None  |             None           | No| No| No| No|  None |         (2)         | Special| 500|
+|Meatbn Slsh|                                                                                                                                     | 300|
+| Distribute|                                                                                                                                     | 200|
+|Equip Armor|                                                                                                                                     | 550|(Test)
+|  HP Boost |                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) Frog, curse, undead, blood suck, oil, poison, or blind.
+(2) Until the caster gets another turn, dies, or another ally casts Guardian, all primary damage dealt to the caster's allies are dealt to the caster instead. If an attack's primary damage is negated, do not proc any secondary effect. Only the damage is redirected at the caster, the hit chance / amount dealt is solely determined by the target.
+NOTE: Guardian does not block skills specially listed to override it (Martial Dance, Transmubomb).
+NOTE: Damaging procs from a healing spell WILL be inflicted.
+
+=========================================================================
+
+Thief (Level 4 Archer)
+Equip: Crossbow, Katana, Knife, Shirt, Hat, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 50| 85| 85|110| 10| 16| 60| 50| 67| 32 | 20 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 |  7-7  | 4| 3| 6|-----------------
+| 25| M | 95-101| 16-18 | 5| 4| 8|-----------------
+| 50| M |163-174| 27-29 | 7| 6|11|-----------------
+| 1 | F | 28-29 |  7-7  | 3| 4| 6|-----------------
+| 25| F | 89-95 | 18-19 | 4| 6| 8|-----------------
+| 50| F |152-163| 29-31 | 6| 8|11|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|Steal Heart| (MA+40)%*(TarCorr+35)%|12| 0| 3-Enemy |   None  |        (1),Add:Charm       | No| No| No| No|  None | If Miss, Drain 25 CT|N.Status| 200|
+|   Feint   |       (SP + 25)%      | 0| 0|1Enemy-v1|   None  | If tar has no AcsryEQ, (2) |(3)| No| No| No|  None |Steal:tarAccessory EQ|  Equip | 200|
+| Air Cannon|        LVL * 2        | 2| 0|  4NSv3  |   Wind  |             None           | No| No|100| No|  None |         None        |   (4)  | 250|
+|    Warn   |          100%         | 5| 0|ALLMAP(A)|   None  |         Add:Defend         | No| No| No| No|  None |         None        |P.Status| 300|
+| Clutch Hit| Wpn DMG*50/(135-tarCT)|12| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |         None        | PhysDMG| 400|(test)
+|  Steal AP |       (SP + 70)%      | 8| 0|1Enemy-v1|   None  |    If tar has 0 AP, (5)    |MEV| No| No| No|  None |      Drain 1 AP     | -Stats | 400|
+| Speed Save|                                                                                                                                     | 400|
+|  Abandon  |                                                                                                                                     | 300|
+|Bounty Hntr|                                                                                                                                     | 350|
+|   Disarm  |                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+NOTE: Any skill that defaults to ATTACK (or a similar variant) takes the accuracy of the weapon (not that of the Break skill).
+(1) If tarSex isn't usrSex
+NOTE: A condition of "If Miss" applies to misses from a poor RNG roll. Effects from this condition don't activate if the attack was nullified by elemental / status resists, or targeting conditions.
+(2) is like ATTACK, but DMG = [SP * 4/5] * WP    
+(3) AP-EV cannot block this attack.
+(4) ONly takes elemental modifiers, and counts as magical damage.
+(5) Add:Blind, Poison, Don't Move, Slow, Oil, OR Stupor
+
+===========================================================================
+
+Monk (Level 4 Archer)
+Equip: Hat, Shirt, Robe, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 80| 90| 90|100| 10| 14| 55| 55| 67| 20 | 32 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 11-11 | 4| 3| 6|-----------------
+| 25| M | 95-101| 29-31 | 6| 5| 8|-----------------
+| 50| M |163-174| 47-51 | 8| 6|10|-----------------
+| 1 | F | 28-29 | 12-12 | 3| 4| 6|-----------------
+| 25| F | 89-95 | 31-33 | 5| 6| 8|-----------------
+| 50| F |152-163| 51-54 | 6| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|Earth Slash|    PA * [SP * 4/5]    |10| 0|  5-5Lv1 |  Earth  |             None           |PEV|Yes| No| No|  None |         None        | PhysDMG| 400|
+|Secret Fist| (MA+40)%*(TarCorr+35)%| 8| 0|  1NSv0  |   None  | Add:Death Sentence XOR DAct|PEV| No| No| No|  None |         None        |N.Status| 300|
+|Stigma Magc|      PA * (5 + X)     | 8| 0| Slf-1v2 |   None  |         Cancel:(1)         | No| No| No| No|  None |         None        | HPHEAL | 400|
+| Wave Fist |    PA * [SP * 4/5]    |10| 0|  3NSv3  |   Wind  |             None           | No|Yes|Yes| No|  None |         None        | PhysDMG| 400|
+| Spin Fist |    PA * [SP * 4/5]    | 0| 0|Slf-1NSv2|   None  |             None           |PEV|Yes|Yes| No|  None |         None        | PhysDMG| 150|
+|DragonSprit|                                                                                                                                     | 400|
+|Concentrate|                                                                                                                                     | 400|(Test)
+|EQ Litegear|                                                                                                                                     | 400|
+|MartialArts|                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) Remove all status effects from all units in AoE except charging, jumping, crystal, critical, dead, performing, and defending. X is the number of statii removed from the target. This will heal even dead targets.
+
+=========================================================================
+
+Defender (Level 5 Paladin, Thief)
+EQUIP: Knightsword, Katana, Longbow, Shield, Helmet, Armor, Robe, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|110| 75| 90| 80|100| 9 | 18| 55| 55| 67| 20 | 12 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 33-31 | 10-11 | 4| 3| 6|-----------------
+| 25| M |112-119| 23-25 | 6| 4| 8|-----------------
+| 50| M |194-207| 37-40 | 8| 5|10|-----------------
+| 1 | F | 30-32 | 11-11 | 3| 4| 6|-----------------
+| 25| F |104-112| 25-27 | 5| 5| 8|-----------------
+| 50| F |181-194| 40-42 | 6| 7|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| Accumulate|          100%         |12| 0|   3v3   |   None  |             None           | No| No| No| No|  None |        +1 PA        | +Stats | 300|
+|  Meditate |          100%         |12| 0|   3v3   |   None  |             None           | No| No| No| No|  None |        +1 MA        | +Stats | 300|
+|    Yell   |          100%         |18| 0|   3v3   |   None  |             None           | No| No| No| No|  None |        +1 SP        | +Stats | 300|
+|Power Break|    (WP + PA + 20)%    |10| 0|  3NSv3  |   None  |             None           |PEV| No| No| No|  None |        -2 PA        | -Stats | 150|
+| Mind Break|    (WP + PA + 20)%    |10| 0|  3NSv3  |   None  |             None           |PEV| No| No| No|  None |        -2 MA        | -Stats | 150|
+|Speed Break|    (WP + PA + 15)%    |12| 0|  3NSv3  |   None  |             None           |PEV| No| No| No|  None |        -1 SP        | -Stats | 200|
+|   Boost   |          100%         |12| 0|   MAP   |   None  |     Add:Blink XOR Float    | No| No| No| No|  None |        +33 CT       | +Stats | 300|
+| HP Restore|                                                                                                                                     | 500|
+| Vigilance |                                                                                                                                     | 400|
+| Unyielding|                                                                                                                                     | 400|
+| Move-HP Up|                                                                                                                                     | 350|(Test)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+==========================================================================
+
+Fighter (Level 5 Lancer, Monk)
+Equip: Spear, Sword, Knife, Flail, Helmet, Hat, Shirt, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 75| 95| 75|100| 10| 15| 50| 60| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 10-11 | 4| 3| 6|-----------------
+| 25| M | 95-101| 26-28 | 6| 4| 8|-----------------
+| 50| M |163-174| 42-45 | 9| 5|10|-----------------
+| 1 | F | 28-29 | 11-11 | 3| 3| 6|-----------------
+| 25| F | 89-95 | 28-29 | 5| 5| 8|-----------------
+| 50| F |152-163| 45-48 | 7| 6|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Blitz   |  Weapon Formula * 3/4 | 0| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    | No|Yes|Yes| No|  None |         None        | PhysDMG| 200|
+|  Beatdown |  Weapon Formula * 5/4 | 0| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |      20% Recoil     | PhysDMG| 200|
+|  Downsize |  (WP+PA+50)% for (1)  |20| 0|  1NSv0  |   Dark  |             None           |PEV| No| No| No| Bladed|         None        | P.%DMG | 300|(Test)
+|Magic Break|  (WP+PA+40)% for (2)  |10| 0|  Weapon |   Dark  |             None           |PEV| No| No| No|  None |         None        |P.%MPDMG| 300|
+|Blade Storm|  Weapon Formula * 3/2 | 0| 0|Slf-1NSv3|  Weapon |     25%Add: Weapon Proc    | No| No| No| No| Bladed| User -1 PA, forceKO | PhysDMG| 400|
+|   Rend!   |     Weapon Formula    | 0| 0|  1NSv1  |  Weapon |     25%Add: Weapon Proc    |PEV|Yes|Yes| No| Bladed|         (3)         | PhysDMG| 400|
+|Burial Shot|     Weapon Formula    | 8| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    |   Weapon  | No|  None |IF KO, -1 DeadCounter| PhysDMG| 200|
+|  PA Save  |                                                                                                                                     | 300|
+| Adrenaline|                                                                                                                                     | 500|
+| Limitless |                                                                                                                                     | 400|
+| Two Swords|                                                                                                                                     | 500|(Test)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) min{500,50% tarmaxHP} 
+(2) min{500,50% tarmaxMP}
+(3) If any of the target's gear blocks this attack by evasion, break the gear.
+
+===============================================================================
+
+Alchemist
+EQUIP: Knife, Gun, Staff, Pole, Bag, Book, Shirt, Hat, Accessories
+INNATE: Slingshot
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 80| 80|105|100| 10| 14| 60| 50| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 11-11 | 4| 4| 6|-----------------
+| 25| M | 95-101| 29-31 | 5| 6| 8|-----------------
+| 50| M |163-174| 47-51 | 7| 8|10|-----------------
+| 1 | F | 28-29 | 12-12 | 3| 5| 6|-----------------
+| 25| F | 89-95 | 31-33 | 4| 7| 8|-----------------
+| 50| F |152-163| 51-54 | 5|10|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Reload  |          100%         | 2| 0|   Self  |   None  |         Add:Defend         | No| No| No| No|  None | Refresh Bag Capacity| Special| 50 |
+|  Conjure  |          ITEM         | 8| 0|  THROW  |   ITEM  |             ITEM           | No| No| No| No|  Bag  |    -ITEM CAP, (1)   |  ITEM  | 300|
+| Holy Water|      80 HP, 40 MP     | 0| 0|  THROW  |Holy+Watr|Cancl:Undead,BloodSuck,Curse| No| No| No| No|  Bag  |     -4 CAP, (2)     |ITEMHEAL| 250|
+|    Bomb   |        LVL * 2        | 5| 0|THROW-1v3|   None  |             None           | No| No| No| No|  Bag  |     -3 CAP, (3)     | BOMBDMG| 250|
+|   Elixir  |   maxtarHP, maxtarMP  | 8| 0|  THROW  |   Holy  |             None           | No| No| No| No|  Bag  |     -15 CAP, (4)    |ITEMHEAL| 400|
+| Dark Flash|        LVL * 2        | 0| 0| THROW+1 |   Dark  |             None           | No| No| No| No|  Bag  |     -2 CAP, (5)     | BOMBDMG| 250|
+|Transmubomb|        LVL * 2        | 0| 0|  THROW  |  Earth  |             None           | No| No| No| No|  Bag  |     -2 CAP, (6)     | BOMBDMG| 200|
+|Auto Potion|                                                                                                                                     | 400|
+| Slingshot |                                                                                                                                     | 300|
+| Gained AP+|                                                                                                                                     | 400|
+|EQSuprtGear|                                                                                                                                     | 250|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+NOTE: If Holy Water hits a unit with non-permanent Blood Suck or Undead, they first take damage before being cured of the status.
+NOTE: Equipping bag while retaining sufficient capacity allows use of the items listed below, provided they also exist in inventory.
+(1) Thrown item's effect happens twice, but only one item is used and the capacity cost is only subtracted once. The throwable items are listed below.
+(2) Use one potion, one ether, one saint icon.
+(3) Use one ether, one everclear, one dungball.
+(4) Use five potions and ethers.
+(5) Use one lightning flask, one glass beaker.
+(6) Use one snowball, one glass beaker. Guardian and spiritguard cannot prevent this damage.
+
+THROWn ITEMs:
+Kunai            -1 CAP
+Javelin          -2 CAP
+Throwing Axe     -2 CAP
+Potion           -1 CAP
+Ether            -1 CAP
+Phoenix Down     -2 CAP
+Glass Beaker     -1 CAP
+Bandage          -1 CAP
+Maiden Kiss      -1 CAP
+Antidote         -1 CAP
+Mind Pill        -1 CAP
+Bath Salts       -1 CAP
+Everclear        -1 CAP
+Dungball         -1 CAP
+Snowball         -1 CAP
+Saint Icon       -1 CAP
+Lightning Flask  -1 CAP
+
+==============================================================================
+
+Geomancer (Level 3 Alchemist)
+Equip: Axe, Knife, Instrument, Shield, Hat, Shirt, Robe, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100|100| 95| 95|100| 10| 10| 55| 55| 67| 24 | 20 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 14-14 | 4| 3| 6|-----------------
+| 25| M | 95-101| 44-47 | 6| 5| 8|-----------------
+| 50| M |163-174| 76-81 | 8| 7|10|-----------------
+| 1 | F | 28-29 | 15-15 | 3| 4| 6|-----------------
+| 25| F | 89-95 | 47-50 | 5| 6| 8|-----------------
+| 50| F |152-163| 81-87 | 7| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|  Pitfall  |  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Earth  |      25%Add:Don't Move     | No| No| No| No|  None |         (1)         | MagDMG | 150|
+|  Sliprain |  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Water  |        25%Add:Stupor       | No| No| No| No|  None |         (2)         | MagDMG | 150|
+|  Hell Ivy |  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Nature |        25%Add:Poison       | No| No| No| No|  None |         (3)         | MagDMG | 150|
+|Carve Model|  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Earth  |        25%Add:Blind        | No| No| No| No|  None |         (4)         | MagDMG | 150|
+|Local Quake|  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Earth  |         25%Add:Slow        | No| No| No| No|  None |         (5)         | MagDMG | 150|
+| Kamaitachi|  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |   Wind  | 50%Cancel:Prot/Shll/Reflect| No| No| No| No|  None |         (6)         | MagDMG | 150|
+| Demon Fire|  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |   Fire  |         25%Add:Oil         | No| No| No| No|  None |         (7)         | MagDMG | 150|
+| Quicksand |  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Water  |         25%Add:Stop        | No| No| No| No|  None |         (8)         | MagDMG | 150|
+| Sand Storm|  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Earth  |        25%Add:Sleep        | No| No| No| No|  None |         (9)         | MagDMG | 150|
+|  Blizzard |  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |  Water  |        25%Add:Addle        | No| No| No| No|  None |         (10)        | MagDMG | 150|
+| Gusty Wind|  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |   Wind  |      25%Add:Don't Act      | No| No| No| No|  None |         (11)        | MagDMG | 150|
+| Lava Ball |  [(PA + 2) / 2] * MA  | 0| 0| 4-1NSv0 |   Fire  |         25%Add:Dead        | No| No| No| No|  None |         (12)        | MagDMG | 150|
+|CountrFlood|                                                                                                                                     | 300|
+| MP Switch |                                                                                                                                     | 350|
+|Survivalism|                                                                                                                                     | 400|
+|  Immunity |                                                                                                                                     | 250|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) ELEMENTAL will autocast this on Natural Surface, Road, Wasteland.
+(2) ELEMENTAL will autocast this on Waterway, River, Lake, Sea, Waterfall
+(3) ELEMENTAL will autocast this on Grassland, Thicket, Water Plant, Ivy
+(4) ELEMENTAL will autocast this on Gravel, Stone Wall, Stone Floor, Tombstone, Mud Wall
+(5) ELEMENTAL will autocast this on Rocky Cliff, Lava Rocks
+(6) ELEMENTAL will autocast this on Book, Tree, Brick, Moss, Bridge, Furniture, Iron Plate, Coffin
+(7) ELEMENTAL will autocast this on Wooden Floor, Rug, Box, Stairs, Deck
+(8) ELEMENTAL will autocast this on Swamp, Marsh, Poisoned Marsh
+(9) ELEMENTAL will autocast this on Sand Area, Stalactite, Salt
+(10) ELEMENTAL will autocast this on Snow, Ice
+(11) ELEMENTAL will autocast this on Roof, Sky, Chimney
+(12) ELEMENTAL will autocast this on Lava, Machine
+
+================================================================================
+
+Scholar (Level 3 Alchemist)
+Equip: Katana, Rod, Staff, Shield, Bag, Book, Hat, Shirt, Robe, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 80| 95| 95|100| 9 | 14| 55| 55| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 11-11 | 4| 3| 6|-----------------
+| 25| M |102-108| 29-31 | 6| 5| 8|-----------------
+| 50| M |177-188| 47-51 | 8| 7|10|-----------------
+| 1 | F | 28-29 | 12-12 | 3| 4| 6|-----------------
+| 25| F | 95-101| 31-33 | 5| 6| 8|-----------------
+| 50| F |165-176| 51-54 | 7| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| DoubleCast|         SCROLL        |16| 0|  SCROLL |  SCROLL |           SCROLL           |(0)| No| No| No|  Book |         (1)         | SCROLL | 400|
+|LevelRange+|         SCROLL        |12| 0|   (2)   |  SCROLL |           SCROLL           |(0)| No| No| No|  Book |         None        | SCROLL | 300|
+| VertReach+|         SCROLL        | 5| 0|   (3)   |  SCROLL |           SCROLL           | No| No| No| No|  Book |         None        | SCROLL | 200|
+| Type:Item |         SCROLL        | 3| 0|  SCROLL |  SCROLL |           SCROLL           |(0)| No| No| No|  Book |         (4)         | SCROLL | 250|
+| MemoryCast|         SCROLL        | 5| 0|  SCROLL |  SCROLL |           SCROLL           |(0)| No| No| No|  Book |         (5)         |   (6)  | 150|
+| Open Mind |                                                                                                                                     | 250|
+|   Seeker  |                                                                                                                                     | 250|
+| Authority |                                                                                                                                     | 350|
+|EQ Magetool|                                                                                                                                     | 250|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(0) Evadability depends on the scroll in question.
+(1) DoubleCast will use two of the same scroll on the target. This attack cannot be used if selected scroll has < 2 copies.
+(2) LevelRange+ increases the range and AoE of the scroll used by 1 each.
+(3) VertReach+ sets the vertical tolerance of the scroll to infinity.
+(4) Type:Item causes all damage scrolls to ignore the target's elemental null, halve, and non-dark elemental absorb.
+(5) MemoryCast causes all scrolls to ignore the target's shell and Magic Defend Up.
+(6) The selected scroll is not consumed.
+
+
+DRAW OUT skills:
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Quake   |          (7)          | 0| 0|  4-0v2  |  Earth  |         Add:Stupor         |MEV| No| No| No|Book(8)|  Use 1 Earth Scroll | MagDMG | N/A|
+|    Aero   |          (7)          | 0| 0|  4-0v2  |   Wind  |         Add:Poison         |MEV| No| No| No|Book(8)|  Use 1 Wind Scroll  | MagDMG | N/A|
+|    Dia    |          (7)          | 0| 0|  4-0v2  |   Holy  |          Add:Blind         |MEV| No| No| No|Book(8)|  Use 1 Light Scroll | MagDMG | N/A|
+| Chainbolt |          (9)          | 0| 0|  4-1v2  |Lightning|        Cancel:Defend       |(A)| No| No| No|Book(8)|  Use 1 Bolt Scroll  | MagDMG | N/A|
+|    Demi   |          (B)          | 0| 0|  4-0v1  |   Dark  |       Add:Don't Move       |MEV| No| No| No|Book(C)| Use 1 Quarter Scroll| M.%DMG | N/A|
+|   Haste   |(MA+50)%*(135-casCorr)%| 0| 0|  4-0v1  |   None  |          Add:Haste         | No| No| No| No|Book(D)|  Use 1 Fast Scroll  |P.Status| N/A|
+|    Slow   | (MA+50)%*(tarCorr+35)%| 0| 0|  4-0v1  |   None  |          Add:Slow          |MEV| No| No| No|Book(C)|  Use 1 Slow Scroll  |N.Status| N/A|
+|  Protect  |(MA+75)%*(135-casCorr)%| 0| 0|  4-0v2  |   None  |         Add:Protect        | No| No| No| No|Book(D)|  Use 1 Dome Scroll  |P.Status| N/A|
+|   Shell   |(MA+75)%*(135-casCorr)%| 0| 0|  4-0v2  |   None  |          Add:Shell         | No| No| No| No|Book(D)|  Use 1 Shell Scroll |P.Status| N/A|
+|  Reflect  |          (E)          | 0| 0|  4-0v1  |   Holy  |         Add:Reflect        | No| No| No| No|Book(D)| Use 1 Life Scroll(F)| HP%HEAL| N/A|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(7) MA * (RU{LVL / 5} + 4) * (tarCorr + 35)%
+(8) If Red Magic is not a primary or secondary, then this spell can only be used if Grimiore or Spell Book is equipped. ELSE, this spell can be used as long as any book is equipped.
+(9) MA * (RU{LVL / 10} + 4) * (tarCorr + 35)%
+(A) Cannot be subject to target's DM-EV.
+(B) (MA + 50)% * (tarCorr + 35)% for min{250, tarmaxHP * 25%}
+(C) If Red Magic is not a primary or secondary, then this spell can only be used if Grimiore or Papyrus Book is equipped. ELSE, this spell can be used as long as any book is equipped.
+(D) If Red Magic is not a primary or secondary, then this spell can only be used if Grimiore or Health Codex is equipped. ELSE, this spell can be used as long as any book is equipped.
+(E) (MA + 65)% * (135 - casCorr)% for tarmaxHP * 25%
+(F) This spell can be used to heal the dead and healing is applied even if reflect is not added.
+
+================================================================================
+
+Mystic Knight (Level 4 Geomancer)
+EQUIP: Rod, Sword, KnightSword, Shield, Helmet, Armor, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 80|105| 90|100| 10| 14| 50| 60| 67| 20 | 24 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 11-11 | 5| 3| 6|-----------------
+| 25| M | 95-101| 29-31 | 7| 5| 8|-----------------
+| 50| M |163-174| 47-51 |10| 6|10|-----------------
+| 1 | F | 28-29 | 12-12 | 4| 4| 6|-----------------
+| 25| F | 89-95 | 31-33 | 6| 6| 8|-----------------
+| 50| F |152-163| 51-54 | 8| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Lancet  |  Drain:Weapon Formula |30| 0|  1NSv0  |   Dark  |            None            |PEV|Yes|Yes| No|  None |         None        | PhysDMG| 350|
+|  Aurawave | WeaponDMG / 2 to HP/MP|24| 0|Slf-1NSv1|   None  |            None            |PEV|Yes|Yes| No|  None |         None        | PhysDMG| 300|
+|MagicStrike|     Weapon Formula    | 0| 0|  Weapon |  Weapon |     25%Add: Weapon Proc    |MEV| No| No|Yes|  None |         None        | MagDMG | 200|
+|   Void!   |      MA * (5 + X)     | 5| 1|    5    |   None  |         Cancel:(1)         | No| No| No|Yes|  None |         None        |M.DMG(2)| 350|
+| ParaStrike|     Weapon Formula    |32| 0|  3NSv1  |  Nature | 50%Add:Don't Act XOR Addle |PEV|Yes|Yes| No|  None |         None        | PhysDMG| 500|
+|Regenerator|                                                                                                                                     | 350|
+|Blood Magic|                                                                                                                                     | 400|(Test)
+| Attack UP |                                                                                                                                     | 400|
+|Equip Blade|                                                                                                                                     | 350|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) Remove all status effects from target except dead, jumping, reflect, crystal, critical. X is the number of statii removed from the target.
+(2) This damage cannot be reduced by any target multipliers.
+
+=========================================================================
+
+Oracle (Level 4 Geomancer)
+Equip: Pole, Rod, Staff, Instrument, Hat, Robe, Shirt, Book, Bag, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|120|125| 85| 90|100| 10| 8 | 60| 50| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 36-38 | 17-18 | 4| 3| 6|-----------------
+| 25| M |114-122| 64-68 | 5| 5| 8|-----------------
+| 50| M |196-209|112-120| 7| 7|10|-----------------
+| 1 | F | 33-35 | 18-19 | 3| 4| 6|-----------------
+| 25| F |106-114| 68-73 | 4| 6| 8|-----------------
+| 50| F |183-196|120-128| 6| 8|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| Lifeleech |          (1)          |16| 7|    5    |   Dark  |            (2)             |MEV| No| No|Yes|  None |         None        | M.%DMG | 350|
+| Spellsuck |          (3)          | 5| 3|    5    |   Dark  |            (4)             |MEV| No| No|Yes|  None |         None        |M.%MPDMG| 250|
+|  Icefall  |          (5)          |20| 7|  ALLMAP |  Water  |            (6)             | No| No| No| No|  None |         None        | MagDMG | 300|
+|   Comet   |          (7)          |32|12|    5    |  Water  |       50%Add:Petrify       |MEV| No| No|Yes|  None |         None        | MagDMG | 400|
+| Cloudbolt |          (8)          |32|10|    5    |Lightning|            None            |MEV| No| No| No|  None |         None        | MagDMG | 400|
+|    Bio    |          (9)          |24|10|  4-1v3  |  Nature |Add:Don't Act, Frog, XOR Oil|MEV| No| No|Yes|  None |         None        | MagDMG | 400|
+|CountrDrain|                                                                                                                                     | 400|
+|EQ Magegear|                                                                                                                                     | 300|
+| Defense UP|                                                                                                                                     | 400|
+|Short Chrge|                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) (MA + 70)% * (tarCorr + 35)% for min{250, tarmaxHP * 25%}
+(2) IF target ends up with 0 HP after using spell, Add:Undead before KOing target.
+(3) (MA + 70)% * (tarCorr + 35)% for min{333, tarmaxMP * 33%}
+(4) IF target ends up with 0 MP after using spell, Add:Sleep.
+(5) MA * RU{LVL / 10} * (tarCorr + 35)%
+(6) IF target would end up with 0 HP after using spell, Add:Stop and set target to 1 HP.
+(7) MA * (RU{LVL / 5} + 7) * (tarCorr + 35)%
+(8) MA * (RU{LVL / 5} + 11) * (tarCorr + 35)%
+(9) MA * (RU{LVL / 5} + 4) * (tarCorr + 35)%
+
+====================================================================================
+
+Priest (Level 4 Scholar)
+Equip: STaff, Flail, Hat, Robe, Shirt, Book, Bag, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100|120| 95|105|100| 10| 9 | 60| 50| 67| 12 | 32 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 16-17 | 4| 4| 6|-----------------
+| 25| M | 95-101| 57-61 | 6| 6| 8|-----------------
+| 50| M |163-174| 99-106| 8| 8|10|-----------------
+| 1 | F | 28-29 | 18-19 | 3| 5| 6|-----------------
+| 25| F | 89-95 | 61-65 | 5| 7| 8|-----------------
+| 50| F |152-163|106-113| 6|10|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Moogle  |          (1)          |15| 3|4Ally-2v3|   Holy  |          Add:Regen         | No| No| No| No|  None |         None        | HPHeal | 200|
+|   Esuna   |          (2)          |20| 3|  4-1v2  |   Holy  |         Cancel:(3)         | No| No| No| No|  None |         None        | HPHeal | 300|
+|  Rebirth  |          (4)          |24| 5|    5    |   Holy  |   Add:Bless XOR Innocent   | No| No| No| No|  None |         (5)         | HP%Heal| 400|
+| Resurrect |          (6)          |30| 7|    5    |   Holy  |       Cancel:Dead(7)       | No| No| No| No|  None |         None        | HP%Heal| 400|
+|   Smite   |          (8)          |36| 8|    5    |   Holy  |            None            |MEV| No| No|Yes|  None |         None        | MagDMG | 400|
+|SavingGrace|                                                                                                                                     | 400|
+|M.Defend UP|                                                                                                                                     | 400|
+|HealngBoost|                                                                                                                                     | 400|
+| Move-MP UP|                                                                                                                                     | 350|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) MA * (RU{LVL / 10} + 2) * (135 - casCorr)%
+(2) MA * (RU{LVL / 5} + 4) * (135 - casCorr)%
+(3) Petrify, Blind, Addle, Stupor, Frog, Poison, Sleep, Don't Move, Don't Act
+(4) (MA + 60)% * (135 - casCorr)% for tarmaxHP * 50%
+(5) This spell can be used to heal the dead and healing is applied even if the proc is not.
+(6) (MA + 60)% * (135 - casCorr)% for tarmaxHP
+(7) If elemental weak converts healing into damage (even if target is already dead), proc fails. In any other case where proc does not occur, spell fails. 
+(8) MA * (RU{LVL / 5} + 11) * (tarCorr + 35)%
+
+===================================================================================
+
+Wizard (Level 4 Scholar)
+Equip: Rod, Knife, Hat, Robe, Shirt, Book, Bag, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100|125| 80|105|100| 10| 8 | 60| 50| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 17-18 | 4| 4| 6|-----------------
+| 25| M | 95-101| 64-68 | 5| 6| 8|-----------------
+| 50| M |163-174|112-120| 7| 8|10|-----------------
+| 1 | F | 28-29 | 18-19 | 3| 5| 6|-----------------
+| 25| F | 89-95 | 68-73 | 4| 7| 8|-----------------
+| 50| F |152-163|120-128| 5|10|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+| Hurricane | min{333, tarmaxHP*33%}|20| 5|  4-2v3  |   Wind  |            None            |MEV| No| No| No|  None |         None        | Mag%DMG| 200|
+|   Wither  |          (1)          |18| 7|  4-1v2  |   Dark  |         Cancel:(2)         |MEV| No| No| No|  None |         None        | MagDMG | 300|
+|   Singe   |          (3)          |20| 5|  4-1v2  |   Fire  |           Add:Oil          |MEV| No| No|Yes|  None |         None        | MagDMG | 300|
+|   Flare   |          (4)          |30|10|    5    |   Fire  |            None            |MEV| No| No|Yes|  None |         None        | MagDMG | 400|
+|   Ultima  |   MA*(RU{LVL/4}+12)   |35|12|    5    |   None  |            None            | No| No| No|Yes|  None |         None        | MagDMG | 500|
+|    Doom   |          (5)          |18| 7|    3    |   Dark  |    50%Add:Death Sentence   |MEV| No| No|Yes|  None |         None        | MagDMG | 300|
+|  MA SAve  |                                                                                                                                     | 300|
+|M.Attack UP|                                                                                                                                     | 400|
+|  Turbo MP |                                                                                                                                     | 500|
+| Mana Boost|                                                                                                                                     | 300|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) MA * (RU{LVL / 5} + 4) * (tarCorr + 35)%
+(2) Float, Invisible, Reraise, Berserk, Regen, Protect, Shell, Haste, Innocent, Reflect, Bless
+(3) MA * RU{LVL / 10} * (tarCorr + 35)%
+(4) MA * (RU{LVL / 5} + 11) * (tarCorr + 35)%
+(5) MA * (RU{LVL / 10} + 2) * (tarCorr + 35)%
+
+===================================================================================
+
+Performer (Level 5 Mystic Knight, Priest)
+Equip: Knife, Instrument, Sword, Shield, Hat, Robe, Shirt, Bag, Book, Accessories
+
+If Male:
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|100| 85| 90|110|110| 10| 14| 55| 55| 67| 32 | 12 |
+If Female:
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|106| 80|110| 90|110| 10| 14| 55| 55| 67| 32 | 12 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 30-31 | 11-12 | 4| 4| 6|-----------------
+| 25| M | 95-101| 30-33 | 6| 6| 8|-----------------
+| 50| M |163-174| 50-54 | 8| 8|11|-----------------
+| 1 | F | 29-31 | 12-12 | 4| 4| 6|-----------------
+| 25| F | 94-101| 31-33 | 6| 6| 8|-----------------
+| 50| F |161-173| 51-54 | 8| 8|11|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|Blade Dance|          (1)          | 8|5P|AllMap(E)|   None  |        33%Add:Poison       | No| No| No| No|  None |         (2)         |FixedDMG| 300|
+| Angel Song|       Fixed 50%       | 5|6P|AllMap(A)|   None  |             (3)            | No| No| No| No|  None |         None        |P.Status| 200|
+|Cloud Dance|          (1)          | 8|5P|AllMap(A)|   None  |        33%Add:Regen        | No| No| No| No|  None |         None        |FixdHeal| 300|
+| Curse Call|       Fixed 50%       | 5|6P|AllMap(E)|   None  |             (4)            | No| No| No| No|  None |         None        |N.Status| 200|
+|   Parade  |       Fixed 50%       | 5|7P|AllMap(A)|   None  |            None            | No| No| No| No|  None |   +1 PA XOR +1 MA   | +Stats | 200|
+|   Polka   |       Fixed 37%       | 5|7P|AllMap(E)|   None  |            None            | No| No| No| No|  None |   -1 PA XOR -1 MA   | -Stats | 200|
+| Blood Seal|                                                                                                                                     | 300|
+|  Dynamism |                                                                                                                                     | 400|(Test)
+| Two Hands |                                                                                                                                     | 500|
+|    Fly    |                                                                                                                                     | 400|
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) (PA + MA + 10) to MP, (PA + MA + 25) to HP
+(2) Guardian and spiritguard cannot prevent this damage.
+(3) Add:Berserk, Reraise, Protect, OR Shell
+(4) Add:Blind, Slow, Oil, OR Stupor
+
+=====================================================================================
+
+Necromancer (Level 5 Oracle, Wizard)
+Equip: Rod, Staff, Pole, Shield, Shirt, Hat, Robe, Bag, Book, Accessories
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+| 90|180| 80| 95|100| 11| 7 | 60| 50| 67|  4 |  4 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 27-28 | 25-26 | 4| 3| 6|-----------------
+| 25| M | 81-86 |100-107| 5| 5| 8|-----------------
+| 50| M |137-146|179-192| 7| 7|10|-----------------
+| 1 | F | 25-26 | 27-28 | 3| 4| 6|-----------------
+| 25| F | 75-80 |108-115| 4| 6| 8|-----------------
+| 50| F |128-137|192-205| 5| 9|10|-----------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Skill   |        Formula        |MP|CT|  Range  | Element |             Proc           |EVD|Crt| KB|REF|  REQ  |       Special       |  Type  | JP |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|   Awaken  |          0 HP         |30| 3|AllMap(A)|   None  |       Cancel:Dead(1)       | No| No| No| No|  None |         (*)         |FixdHEAL| 300|
+|  Putrefy  |          (2)          |40|10|    5    |  Nature |   50%Add:Oil XOR Poison+   |MEV| No| No| No|  None |         None        | MagDMG | 400|
+|    Lich   | (MA+40)%*(tarCorr+35)%|24|10|  4E-2v3 |   Dark  |    Add:Curse AND Defile    |MEV| No| No| No|  None |         None        |N.Status| 300|
+|    Fear   |          (3)          |40|12|    5    |   Dark  |             (4)            |MEV| No| No|Yes|  None |If tar is KO,-20 Loy.| Mag%DMG| 400|
+|  Soultint |          (2)          |40|10|    5    |   Dark  |       (5),Add:Undead       | No| No| No| No|  None |If tar is KO,+20 Cor.| MagDMG | 400|
+| Blood Suck|          (6)          | 0| 0|   1v0   |   Dark  |     (7),Add:Blood Suck     |PEV| No| No| No|  None |         None        |Phys%DMG| 300|
+| CntrMagic |                                                                                                                                     | 300|
+|  Half MP  |                                                                                                                                     | 400|
+| Veterancy |                                                                                                                                     | 400|(Test)
+| Non-Charge|                                                                                                                                     | 500|(Test)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+(1) The spell has no effect unless Cancel:X occurs.
+(*) Units "healed" by awaken will gain a turn if left alone, but if such a unit ends his turn with 0 HP, he will die.
+(2) MA * (RU{LVL / 5} + 7) * (tarCorr + 35)%
+(3) (MA + 50)% * (tarCorr + 35)% for min{666, tarmaxHP * 66%}
+(4) If blocked by evasion, Add:Addle XOR Stupor.
+NOTE: A condition of "If Evade" applies to only to misses from evasion. This condition doesn't activate from the innate inaccuracy of the attack or nullification by elemental, targeting conditions.
+(5) If target is in critical after using spell, apply condition.
+(6) Drain min{333, tarcurHP * 33%} from HP and min{333, tarcurMP * 33%} from MP.
+(7) If tarHP + tarMP < tarLVL after using spell, apply condition.
+
+=========================================================================
+
+Mime (Level 6 Fighter, Defender, Performer, Necromancer)
+Equip: Everything except Weapons and Shields
+Innate: Hamedo, Pantomime, Upkeep, Vitality UP
+Restrictions: No R/S/S, No Secondary
+---------------------------------------------------
+|HPM|MPM|PAM|MAM|SPM|HPC|MPC|PAC|MAC|SPC|CPEV|CMEV|
+---------------------------------------------------
+|110|120|110|110|100| 9 | 9 | 50| 50| 67| 32 | 32 |
+---------------------------------------------------
+|LVL|Sex|HPm-HPM|MPm|MPM|PA|MA|SP|-----------------
+---------------------------------------------------
+| 1 | M | 33-31 | 16-17 | 5| 4| 6|-----------------
+| 25| M |112-119| 57-61 | 8| 6| 8|-----------------
+| 50| M |194-207| 99-106|10| 8|10|-----------------
+| 1 | F | 30-32 | 18-19 | 4| 5| 6|-----------------
+| 25| F |104-112| 61-65 | 6| 8| 8|-----------------
+| 50| F |181-194|106-113| 8|10|10|-----------------
+---------------------------------------------------
+
+===============================================================================
