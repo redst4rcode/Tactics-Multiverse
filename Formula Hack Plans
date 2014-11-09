@@ -1,0 +1,155 @@
+JP Slot - 16 bits
+4 bits = VAL * 50 JP Cost
+5 bits = Signed 4 bit XA +/- XA value
+7 bits = (VAL + 1) / 64 * FinalDMG
+
+Range
+4 Bits = Actual Range
+0xF = 255 Range
+functions as +Range if weapon ranged is flagged
+4 Bits = VAL / 15 Recoil
+
+Vertical
+4 Bits = Actual Vertical
+0xF = 255 Vertical
+functions as +Vert if weapon ranged is flagged
+4 Bits = Break/Stat change
+0-Weapon/PA
+1-Shield/MA
+2-Head/SP
+3-Armor/CT
+4-Accessory/Loy
+5-Random/Cor
+6-Evade Type/KO Counter
+7-?/AP
+8-?/PA XOR MA
+9-
+A-
+B-
+C-
+D-
+E-
+F-?/PA,SP,MA,Loy
+
+AoE
+3 Bits = Actual Vertical
+0x7 = 255 AoE
+functions as +AoE if weapon ranged is flagged
+5 Bits = Stat change amount
+5-Stat Drain/Steal Toggle
+4-Sign Flag
+REST-(VAL+1) Stat change, VAL * 10 + 10 for Loy / Cor changes, VAL * 10 + 15 for CT changes, if VAL = 7, then CT change is max
+
+MP
+4 Bits = VAL * 5 = MP Cost
+2 Bits:
+0 = Normal
+1 = Primary Proc if KO target
+2 = Primary Proc if evaded / bad RNG (if an attack is evadable and has innate inaccuracy, this check applies only to evasion)
+3 = If Secondary Proc works, no primary
+2 Bits:
+0 = Normal
+1 = Secondary Proc if KO target
+2 = Secondary Proc if evaded / bad RNG (if an attack is evadable and has innate inaccuracy, this check applies only to evasion)
+3 = If Primary Proc works, no secondary
+
+CT
+4 Bits = CT
+4 Bits:
+4 bits = (VAL + 1) / 16 chance to proc Secondary Proc
+
+X
+Determined by Formula
+Y
+5 bits:
+5 bits = (VAL + 1) / 32 chance to proc Primary Proc
+3 bits:
+0- No Target Restrictions
+1- Tar. must NOT be UsrSex
+2- Tar. must be Monster
+3- Tar. must be Undead
+4- Tar. must have various statii (see Purge)
+5-
+6-
+7-
+
+======================================================================================
+
+Formula Properties - 32 bits
+
+4 bits:
+YA
+0- 1 (flagging HP means HP, flagging MP means MP, flagging both means MP change are half those to HP)
+1- WP
+2- SP
+3- PA
+4- MA
+5- Base PA
+6- LVL
+7- S-EV
+8- # of Statii Referenced
+9- min{tar maxHP/MP,999} (flagging HP means HP, MP means MP, both means both)
+A- min{tar curHP/MP,999} (flagging HP means HP, MP means MP, both means both)
+B- min{tar maxHP/MP - curHP/MP,999} (flagging HP means HP, MP means MP, both means both)
+C- cas maxHP/MP (flagging HP means HP, MP means MP, both means both)
+D- cas curHP/MP (flagging HP means HP, MP means MP, both means both)
+E- cas maxHP/MP - curHP/MP (flagging HP means HP, MP means MP, both means both)
+F- tar BodyEQHP
+
+4 bits:
+XA
+0- 0
+1- WP
+2- SP
+3- PA
+4- MA
+5- Base PA
+6- LVL
+7- JMP
+8- MOV
+9- 
+A- 
+B- 
+C- 
+D- 
+E- Weapon XA
+F- Weapon XA * 50 / (135 - CT)
+
+1 bit - XA/YA relation
+0- XA*YA
+1- XA+YA
+
+3 bits:
+YA/XA/X relation
+0- (YA+X) (unsigned)
+1- (YA+/-X) (signed)
+2- (YA / Hi4X + Lo4X)
+3- (YA + Hi4X * 5) to HP or MP if only one is flagged, (YA + Lo4X * 5) to MP if both are flagged
+4- (XA+X)% (only works if HP and/or MP is flagged, which takes on the YA value)
+5- (YA + Hi4X * 10), -Lo4X CAP
+6- (YA + Hi4X), -Lo4X CAP
+7- (YA + Hi4X * 5), Lo4X = # of attacks
+
+3 bits:
+Bit 3
+Randomizer Type
+0- RN{1...#}
+1- RN{#/2...#*3/2}
+Lower 2:
+Randomized Stat
+0- No Randomness
+1- Randomize YA
+2- Randomize YA+X
+3- Randomize Final Result
+
+1 bit - Evasion Toggle
+1 bit - Drain Toggle
+1 bit - Heal Toggle
+1 bit - Critical Hit Toggle
+5 bits:
+Multiplier Toggles
+Bit 5 - Zodiac Toggle
+Bit 4 - Elem Strengthen, Halve, Absorb Toggle
+Bit 3 - Elem Weak, Null Toggle
+Bit 2 - XA Positive Multiplier Toggle
+Bit 1 - XA Defense Multiplier Toggle
