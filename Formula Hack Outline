@@ -1,0 +1,140 @@
+Formula Hack (Inputs: r4 = Formula Values)
+
+OFFSET: 0x???
+
+stack stuff (r4 -> r16, r17 = Attacker Offset, r18 = Target Offset, r19 = 0x80190000, AI Flags -> r20, JP Cost -> r21, r22 used as temp storage, r23 = ?, r31 store)
+jal RESTRICTCHECK (Inputs: r5 = Y (r19) AND 0x0007, r17, r18; Outputs: r2 = Ability Restricted)
+nop
+bne r2, r0, END (Ability Restrictions Check)
+nop
+jal PROC (Inputs: r4 = Inflict STatus ID, r5 = Y (r19) srl 3, r18 ; Outputs: Status Infliction Stored, r2 = STRONGLY LINKED FAIL, r3 = # of status referenced)
+nop
+beq r2, r0, END (Strongly Linked Fail)
+addu r22, r3, r0
+jal SECONDPROC (Inputs: r4 = Inflict Status ID, r19(0x38fc) srl 4 (CT), r19(0x38f0) srl 4 (Vertical), r19(0x38f1) srl 3 (AoE), r18; Output: Status Infliction Stored, r2 = Maintenance Check, r4 = XA/YA Bitmask when break fails due to lack of equip; default is D0)
+nop
+bne r2, r0, END
+nop
+addu r23,r4,r0
+ori r1, r0, 0x00d0
+bne r23, r1, YALOAD
+nop
+andi r23,r16,0x00FF
+nop
+jal YALOAD (Inputs: r22, r23 AND 0x000F, r17, r18; Outputs: STORE YA)
+nop
+jal XALOAD (Inputs: r23 AND 0x00F0, r17---NOTE: XALOAD includes Weapon XA routine; Outputs: STORE XA)
+nop
+jal XAPLUS (r4 = XA, r21 srl 0x04 AND 0x1F; Output: Modify XA)
+nop
+jal XAMULTS (Inputs: r4 = XA (r19), r16 AND 0xC000FF, r17, r18, r20---NOTE: XAMULTS differentiates between physical and magical but does not apply Zodiac; Outputs: STORE XA)
+nop
+jal YA_ADD (Inputs: r4 = XA (r19), r5 = YA (r19), r16 AND 0x407E00, r20 (AI Flags); Output: STORE YA (Includes Critical Hit and Randomizer); EXCEPT: (XA+X)% STORE XA)
+nop
+andi r2, r16, 0x7000
+ori r1, r0, 0x4000
+beq r2, r1, ZODIAC
+nop
+andi r2, r16, 0x100
+beq r2, r0, ZODIAC
+nop  
+lbu r4, 0x38ce(r19)
+lbu r5, 0x38d0(r19) 
+addu r2, r4, r5
+STORE sb r2,0x38ce(r19)
+nop
+jal ZODIAC (Inputs: r4 = XA (r19), r16 AND 0x800000; Output: STORE XA)
+nop
+//CASE 1: XA * YA => DMG
+//CASE 2: XA + X%, YA => DMG
+//CASE 3: XA + YA + X%, NO DMG
+andi r2, r16, 0x100
+bne r2, r0, ADD
+lbu r4, 0x38ce(r19)
+andi r2, r16, 0x7000
+ori r1, r0, 0x4000
+beq r2, r1, DEMI
+lbu r5, 0x38d0(r19) 
+mult r4, r5
+mflo r2
+j EVASION
+STORE: sh r2, 0x190(r18) (DAMAGE)
+ADD: andi r2, r20, 0x00c0
+beq r2, r0, NOTHPMP
+nop
+j EVASION
+sh r4, 0x190(r18) (DAMAGE)
+NOTHPMP: j EVASION
+sb r4, 0x1b6(r17) (ACCURACY)
+DEMI: sh r5, 0x190(r18)
+sb r4, 0x1b6(r17)
+EVASION: jal EVASION (Input: r18, r19(+38f6) AND 0x02, r16 AND 0x80000, r20; Output: r2 = EVADE RESULT; 0 = miss, 1 = Hit (has check for if player selectable), r3 = EVADE RECOIL DMG) 
+nop
+beq r3, r0, CHECKEVADE
+nop
+sh r3, 0x190(r17) (RECOIL)
+nop
+CHECKEVADE: beq r2, r0, SETMISS
+nop
+jal FAITH: (Input: r17, r18, r20, r4 = DAMAGE; Output: Modify Damage)
+nop
+jal FURY: (Input: r17, r18, r20 or r19, r4 = DAMAGE; Output: Modify Damage)
+nop
+jal FINALDMGMULT: (Input: r4 = DAMAGE, r21 srl 0x9, r16 AND 300000; Output: Modify Damage)
+nop
+jal Recoil: (Input: r4 = DAMAGE, r17, r19(+38f0) srl 0x4; Output: r2 = Recoil Damage)
+nop
+beq r2, r0, ELEMENTAL
+nop
+lhu r3,0x190(r17)
+nop
+addu r2,r2,r3
+sh r2, 0x190(r17) (RECOIL)
+nop
+jal ELEMENTAL (Input: r4 = DAMAGE, r16 AND 33000000, r18, r17, r20 (Healing and Drain is calculated here); Output: Modify Damage and Healing both players)
+nop
+jal HEALANDDAMAGEMULT (Input: r4 = Damage, r17, r18, r16 AND C00000 -- Note: If the ability is an HP percentage attack, exclude Overwhelm, Veterancy and Dynamism; Output: Modify Damage and Healing)
+nop
+SETMISS: addiu r4, r0, 0x0003
+lbu r2, 0x3913(r19) (MP)
+sb r0, 0x18d(r18) (Critical Hit)
+sw r0, 0x190(r18) (HP Damage, HP Healing)
+sw r0 0x194(r18) (MP Damage, MP Healing)
+andi r3, r2, 0x0080
+xor r1,r3,r2
+bne r1, r0, RESET2
+nop
+beq r1,r3,RESET2
+nop
+j NEXT
+nop
+RESET2:addiu r4, r4, 0xFFFF
+sh r0 0x19e(r18) (SP/CT)
+sh r0 0x1a0(r18) (PA/MA)
+sh r0 0x1a2(r18) (Loy/Corr)
+sb r0 0x1b6(r18) (EXP)
+NEXT:andi r3, r2, 0x0020
+xor r1, r3, r2
+bne r1, r0, RESET
+nop
+beq r1, r3, RESET
+nop
+j RECOILCHECK
+nop
+RESET:addiu r4, r4, 0xFFFF
+sb r0,0x1a7(r18) Stat inflict 1
+sw r0,0x1a8(r18) Stat inflict 2-5
+sw r0,0x1ac(r18) Stat Removal 1-4
+sb r0,0x1b0(r18) Stat Removal 5
+sh r0,0x38c8(r19) Can no longer spell proc
+sh r0,0x38c6(r19) Sets Spell Proc ID to 0
+sb r0,0x38ef(r19) Sets Spell Proc Target ID to 0
+RECOILCHECK: lhu r2, 0x190(r17)
+nop
+beq r2, r0, COUNTERCHECK
+nop
+addiu r4, r4, 0xFFFF
+COUNTERCHECK: bne r4, r0, END
+nop
+ENDMISS: sb r0 0x18c(r18)
+END: stackstuff
